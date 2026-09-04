@@ -120,11 +120,6 @@ app.get('/api/analytics', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-require('dotenv').config();
-const cors = require('cors');
-const axios = require('axios');
-const { pool, initDB } = require('./db');
-
 const app = express();
 app.use(cors());
 app.use(express.json());
