@@ -1,15 +1,19 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const axios = require('axios');
 const { pool, initDB } = require('./db');
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 // Initialize Database Tables
 initDB();
 
+// Root Route
 app.get('/', (req, res) => {
   res.send('Bike POS Backend is Running Successfully!');
 });
@@ -24,18 +28,14 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-// ১. নতুন প্রোডাক্ট অ্যাড এবং সাপ্লায়ার পারচেস এন্ট্রি
+// ১. নতুন প্রোডাক্ট অ্যাড এবং সাপ্লায়ার পারচেস এন্ট্রি
 app.post('/api/products/add', async (req, res) => {
   const { name, sku, category, cost_price, selling_price, stock, supplier_name, supplier_phone } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
-    // সাপ্লায়ার সেভ
+    // সাপ্লায়ার সেভ
     let supplierId = null;
     if (supplier_name) {
       const supRes = await client.query(
@@ -84,14 +84,14 @@ app.post('/api/expenses', async (req, res) => {
   }
 });
 
-// ৩. সেলস, এক্সপেন্স, কার থেকে কেনা হয়েছে এবং প্রফিট অ্যানালিটিক্স
+// ৩. সেলস, এক্সপেন্স, কার থেকে কেনা হয়েছে এবং প্রফিট অ্যানালিটিক্স
 app.get('/api/analytics', async (req, res) => {
   try {
     // মোট বিক্রি
     const salesRes = await pool.query('SELECT COALESCE(SUM(paid_amount), 0) AS total_sales FROM invoices');
-    // মোট খরচ (দোকান ভাড়া, বিল, পারিশ্রমিক ইত্যাদি)
+    // মোট খরচ (দোকান ভাড়া, বিল, পারিশ্রমিক ইত্যাদি)
     const expenseRes = await pool.query('SELECT COALESCE(SUM(amount), 0) AS total_expenses FROM expenses');
-    // সাপ্লায়ার পারচেস লিস্ট (কার থেকে কী দামে কেনা হয়েছে)
+    // সাপ্লায়ার পারচেস লিস্ট (কার থেকে কী দামে কেনা হয়েছে)
     const purchaseRes = await pool.query(`
       SELECT p.id, pr.name AS product_name, s.name AS supplier_name, s.phone AS supplier_phone,
              p.quantity, p.purchase_price, p.total_cost, p.created_at
@@ -107,7 +107,7 @@ app.get('/api/analytics', async (req, res) => {
     const totalExpenses = Number(expenseRes.rows[0].total_expenses);
     const totalCogs = Number(totalInventoryCostRes.rows[0].total_cogs);
 
-    // নিট প্রফিট = মোট সেল - (মালের ক্রয়মূল্য + অন্যান্য খরচ)
+    // নিট প্রফিট = মোট সেল - (মালের ক্রয়মূল্য + অন্যান্য খরচ)
     const netProfit = totalSales - (totalCogs * 0.6) - totalExpenses; // এস্টিমেটেড মার্জিন
 
     res.json({
@@ -120,11 +120,8 @@ app.get('/api/analytics', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-const app = express();
-app.use(cors());
-app.use(express.json());
 
-initDB();
+// --- Facebook Webhook & Chatbot Setup ---
 
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'modx_secret_bot_token';
@@ -153,7 +150,7 @@ const sendTextMessage = async (senderId, text) => {
   }
 };
 
-// চ্যাটবট স্টেট মেশিন (অর্ডার নেওয়া)
+// চ্যাটবট স্টেট মেশিন (অর্ডার নেওয়া)
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'page') {
@@ -183,7 +180,7 @@ app.post('/webhook', async (req, res) => {
             break;
           case 3:
             session.orderData.phone = userMsg;
-            await sendTextMessage(senderId, "কুরিয়ার ডেলিভারির জন্য আপনার পূর্ণ ঠিকানা (জেলা ও থানা সহ) দিন:");
+            await sendTextMessage(senderId, "কুরিয়ার ডেলিভারির জন্য আপনার পূর্ণ ঠিকানা (জেলা ও থানা সহ) দিন:");
             session.step = 4;
             break;
           case 4:
@@ -196,9 +193,9 @@ app.post('/webhook', async (req, res) => {
                   [senderId, session.orderData.name, session.orderData.phone, session.orderData.address, session.orderData.items]
                 );
               }
-              await sendTextMessage(senderId, `আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে! ✅\nআইটেম: ${session.orderData.items}\nফোন: ${session.orderData.phone}\nখুব শীঘ্রই আমাদের টিম কল করে কনফার্ম করবে।`);
+              await sendTextMessage(senderId, `আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে! ✅\nআইটেম: ${session.orderData.items}\nফোন: ${session.orderData.phone}\nখুব শীঘ্রই আমাদের টিম কল করে কনফার্ম করবে।`);
             } catch (err) {
-              await sendTextMessage(senderId, "অর্ডার সংরক্ষণে সমস্যা হয়েছে, দয়া করে আবার চেষ্টা করুন।");
+              await sendTextMessage(senderId, "অর্ডার সংরক্ষণে সমস্যা হয়েছে, দয়া করে আবার চেষ্টা করুন।");
             }
             delete userSessions[senderId];
             break;
@@ -225,5 +222,8 @@ app.get('/api/facebook-orders', async (req, res) => {
   }
 });
 
+// Server Listen (একদম শেষে একবারই থাকবে)
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
