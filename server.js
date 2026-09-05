@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -13,10 +14,7 @@ app.use(express.json());
 // Initialize Database Tables
 initDB();
 
-// Root Route
-app.get('/', (req, res) => {
-  res.send('Bike POS Backend is Running Successfully!');
-});
+// ---------------- API ROUTES ----------------
 
 // Get Products
 app.get('/api/products', async (req, res) => {
@@ -30,12 +28,11 @@ app.get('/api/products', async (req, res) => {
 
 // ১. নতুন প্রোডাক্ট অ্যাড এবং সাপ্লায়ার পারচেস এন্ট্রি
 app.post('/api/products/add', async (req, res) => {
-  const { name, sku, category, cost_price, selling_price, stock, supplier_name, supplier_phone } = req.body;
+  const { name, sku, cost_price, selling_price, stock, supplier_name, supplier_phone } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
-    // সাপ্লায়ার সেভ
     let supplierId = null;
     if (supplier_name) {
       const supRes = await client.query(
@@ -45,7 +42,6 @@ app.post('/api/products/add', async (req, res) => {
       supplierId = supRes.rows[0].id;
     }
 
-    // প্রোডাক্ট সেভ
     const prodRes = await client.query(
       `INSERT INTO products (name, barcode, cost_price, selling_price, stock, min_stock)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -53,7 +49,6 @@ app.post('/api/products/add', async (req, res) => {
     );
     const product = prodRes.rows[0];
 
-    // পারচেস হিস্ট্রি সেভ
     await client.query(
       `INSERT INTO purchases (product_id, supplier_id, quantity, purchase_price, total_cost)
        VALUES ($1, $2, $3, $4, $5)`,
@@ -87,11 +82,8 @@ app.post('/api/expenses', async (req, res) => {
 // ৩. সেলস, এক্সপেন্স, কার থেকে কেনা হয়েছে এবং প্রফিট অ্যানালিটিক্স
 app.get('/api/analytics', async (req, res) => {
   try {
-    // মোট বিক্রি
     const salesRes = await pool.query('SELECT COALESCE(SUM(paid_amount), 0) AS total_sales FROM invoices');
-    // মোট খরচ (দোকান ভাড়া, বিল, পারিশ্রমিক ইত্যাদি)
     const expenseRes = await pool.query('SELECT COALESCE(SUM(amount), 0) AS total_expenses FROM expenses');
-    // সাপ্লায়ার পারচেস লিস্ট (কার থেকে কী দামে কেনা হয়েছে)
     const purchaseRes = await pool.query(`
       SELECT p.id, pr.name AS product_name, s.name AS supplier_name, s.phone AS supplier_phone,
              p.quantity, p.purchase_price, p.total_cost, p.created_at
@@ -100,15 +92,12 @@ app.get('/api/analytics', async (req, res) => {
       LEFT JOIN suppliers s ON p.supplier_id = s.id
       ORDER BY p.id DESC
     `);
-    // প্রডাক্ট খরচের যোগফল
     const totalInventoryCostRes = await pool.query('SELECT COALESCE(SUM(total_cost), 0) AS total_cogs FROM purchases');
 
     const totalSales = Number(salesRes.rows[0].total_sales);
     const totalExpenses = Number(expenseRes.rows[0].total_expenses);
     const totalCogs = Number(totalInventoryCostRes.rows[0].total_cogs);
-
-    // নিট প্রফিট = মোট সেল - (মালের ক্রয়মূল্য + অন্যান্য খরচ)
-    const netProfit = totalSales - (totalCogs * 0.6) - totalExpenses; // এস্টিমেটেড মার্জিন
+    const netProfit = totalSales - (totalCogs * 0.6) - totalExpenses;
 
     res.json({
       total_sales: totalSales,
@@ -150,7 +139,7 @@ const sendTextMessage = async (senderId, text) => {
   }
 };
 
-// চ্যাটবট স্টেট মেশিন (অর্ডার নেওয়া)
+// চ্যাটবট স্টেট মেশিন
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'page') {
@@ -211,7 +200,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Facebook Orders API
+// Facebook Orders List
 app.get('/api/facebook-orders', async (req, res) => {
   try {
     if (!pool) return res.json([]);
@@ -222,7 +211,34 @@ app.get('/api/facebook-orders', async (req, res) => {
   }
 });
 
-// Server Listen (একদম শেষে একবারই থাকবে)
+// Facebook Order Status Update (Approve)
+app.patch('/api/facebook-orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE fb_orders SET order_status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json({ success: true, order: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------- SERVE FRONTEND BUILD ----------------
+// frontend/build ফোল্ডার স্ট্যাটিক ফাইল হিসেবে সার্ভ করা
+app.use(express.static(path.join(__dirname, 'frontend', 'build')));
+
+// অন্য সব রিকোয়েস্টে সরাসরি ফ্রন্টএন্ড UI ওপেন হবে
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
+});
+
+// Server Listen
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
