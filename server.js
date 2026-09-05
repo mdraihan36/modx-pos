@@ -233,8 +233,8 @@ app.patch('/api/facebook-orders/:id', async (req, res) => {
 // frontend/build ফোল্ডার স্ট্যাটিক ফাইল হিসেবে সার্ভ করা
 app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 
-// অন্য সব রিকোয়েস্টে সরাসরি ফ্রন্টএন্ড UI ওপেন হবে
-app.get('*', (req, res) => {
+// অন্য সব রিকোয়েস্টে সরাসরি ফ্রন্টএন্ড UI ওপেন হবে (Express 5/path-to-regexp সেইফ ফরম্যাট)
+app.get(/^(?!\/api|\/webhook).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
 });
 
