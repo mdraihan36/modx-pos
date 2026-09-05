@@ -1,26 +1,40 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 15000,
-  idleTimeoutMillis: 30000,
-  max: 10
-});
+let pool = null;
+let isCloudConnected = false;
+
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15000,
+    idleTimeoutMillis: 30000,
+    max: 10
+  });
+}
 
 const initDB = async () => {
+  if (!pool) {
+    console.log('⚠️ Running in Local Offline Memory Mode (No DATABASE_URL)');
+    return;
+  }
+
   let client;
   try {
     client = await pool.connect();
+    console.log(' Connected to PostgreSQL Database');
+
+    // ১. ব্রাঞ্চ টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS branches (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL
       );
+    `);
 
+    // ২. ইউজার টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -29,14 +43,20 @@ const initDB = async () => {
         role VARCHAR(50) NOT NULL,
         branch_id INT REFERENCES branches(id) ON DELETE SET NULL
       );
+    `);
 
+    // ৩. কাস্টমার টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100),
         phone VARCHAR(20) UNIQUE NOT NULL,
         loyalty_points INT DEFAULT 0
       );
+    `);
 
+    // ৪. সাপ্লায়ার টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS suppliers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
@@ -44,17 +64,25 @@ const initDB = async () => {
         company VARCHAR(150),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ৫. প্রোডাক্ট ক্যাটালগ টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
         barcode VARCHAR(100),
-        cost_price NUMERIC(10, 2) NOT NULL,
-        selling_price NUMERIC(10, 2) NOT NULL,
+        cost_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+        reseller_base_price NUMERIC(10, 2) DEFAULT 0,
+        selling_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
         stock INT DEFAULT 0,
-        min_stock INT DEFAULT 5
+        min_stock INT DEFAULT 5,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ৬. পারচেস হিস্ট্রি টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS purchases (
         id SERIAL PRIMARY KEY,
         product_id INT REFERENCES products(id) ON DELETE CASCADE,
@@ -64,7 +92,10 @@ const initDB = async () => {
         total_cost NUMERIC(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ৭. খরচ (Expenses) টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
         title VARCHAR(150) NOT NULL,
@@ -72,7 +103,10 @@ const initDB = async () => {
         amount NUMERIC(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ৮. জব কার্ড (বাইক সার্ভিসিং) টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS job_cards (
         id SERIAL PRIMARY KEY,
         bike_number VARCHAR(50) NOT NULL,
@@ -84,17 +118,23 @@ const initDB = async () => {
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ৯. ইনভয়েস টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS invoices (
         id SERIAL PRIMARY KEY,
         customer_name VARCHAR(100),
         customer_phone VARCHAR(20),
-        bike_number VARCHAR(50) NOT NULL,
+        bike_number VARCHAR(50),
         total_amount NUMERIC(10, 2) NOT NULL,
         paid_amount NUMERIC(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
 
+    // ১০. ইনভয়েস আইটেমস টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS invoice_items (
         id SERIAL PRIMARY KEY,
         invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
@@ -104,7 +144,10 @@ const initDB = async () => {
         unit_price NUMERIC(10, 2),
         subtotal NUMERIC(10, 2)
       );
+    `);
 
+    // ১১. পেমেন্টস টেবিল
+    await client.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
         invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
@@ -115,73 +158,27 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('PostgreSQL Tables Initialized Successfully');
-  } catch (err) {
-    console.error('Error initializing PostgreSQL tables:', err.message);
-  } finally {
-    if (client) client.release();
-  }
-};
 
-module.exports = { pool, initDB };
-require('dotenv').config();
-const { Pool } = require('pg');
-
-let pool = null;
-let isCloudConnected = false;
-
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10000
-  });
-}
-
-const initDB = async () => {
-  if (!pool) {
-    console.log('⚠️ Running in Local Offline Memory Mode');
-    return;
-  }
-
-  try {
-    const client = await pool.connect();
-    console.log(' Connected to Neon PostgreSQL Cloud Database');
-
-    // ১. প্রোডাক্ট ক্যাটালগ টেবিল
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(150) NOT NULL,
-        barcode VARCHAR(100),
-        cost_price NUMERIC(10, 2) NOT NULL,
-        reseller_base_price NUMERIC(10, 2) NOT NULL,
-        selling_price NUMERIC(10, 2) NOT NULL,
-        stock INT DEFAULT 0,
-        min_stock INT DEFAULT 5
-      );
-    `);
-
-    // ২. পার্টনারস (ডিলার ও রিসেলার) টেবিল
+    // ১২. পার্টনারস (ডিলার ও রিসেলার) টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS partners (
         id SERIAL PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
         company VARCHAR(150),
         phone VARCHAR(50) NOT NULL,
-        role VARCHAR(20) NOT NULL, -- 'DEALER' or 'RESELLER'
+        role VARCHAR(20) NOT NULL,
         payout_method VARCHAR(50),
         payout_account VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // ৩. পার্টনার লেনদেন লেজার
+    // ১৩. পার্টনার ট্রানজ্যাকশন লেজার
     await client.query(`
       CREATE TABLE IF NOT EXISTS partner_transactions (
         id SERIAL PRIMARY KEY,
         partner_id INT REFERENCES partners(id) ON DELETE CASCADE,
-        type VARCHAR(20) NOT NULL, -- 'SALE' (মাল দেওয়া) or 'PAYMENT' (টাকা আদায়/পে-আউট)
+        type VARCHAR(20) NOT NULL,
         description TEXT,
         amount NUMERIC(10, 2) NOT NULL,
         trx_ref VARCHAR(100),
@@ -190,12 +187,12 @@ const initDB = async () => {
       );
     `);
 
-    // ৪. কুরিয়ার ডেলিভারি ট্র্যাকিং টেবিল
+    // ১৪. কুরিয়ার ডেলিভারি ট্র্যাকিং
     await client.query(`
       CREATE TABLE IF NOT EXISTS courier_deliveries (
         id SERIAL PRIMARY KEY,
         invoice_id INT,
-        courier_name VARCHAR(50) NOT NULL, -- 'Steadfast' or 'Sundarban'
+        courier_name VARCHAR(50) NOT NULL,
         tracking_code VARCHAR(100) NOT NULL,
         recipient_name VARCHAR(100) NOT NULL,
         recipient_phone VARCHAR(20) NOT NULL,
@@ -207,7 +204,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৫. ফেসবুক পেজ চ্যাটবট অর্ডার টেবিল
+    // ১৫. ফেসবুক মেসেঞ্জার চ্যাটবট অর্ডার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS fb_orders (
         id SERIAL PRIMARY KEY,
@@ -221,10 +218,12 @@ const initDB = async () => {
       );
     `);
 
-    client.release();
     isCloudConnected = true;
+    console.log(' All Database Tables Initialized Successfully');
   } catch (err) {
-    console.log('⚠️ Cloud DB Connection Error (Fallback Active):', err.message);
+    console.error('⚠️ Database Initialization Error:', err.message);
+  } finally {
+    if (client) client.release();
   }
 };
 
