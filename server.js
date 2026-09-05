@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const { pool, initDB } = require('./db');
-import { GoogleGenAI } from '@google/genai';
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 
@@ -446,8 +446,7 @@ app.post('/webhook', async (req, res) => {
 
           const botReply = response.text || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
 
-          // ৪. কাস্টমার যদি অর্ডার সংক্রান্ত তথ্য দিয়ে দেয়, চাইলে সেটি ব্যাকএন্ডে ধরতে পারেন বা জেমিনির উত্তরের ওপর ভিত্তি করে কাজ করতে পারেন।
-          // ৫. ফেসবুকে উত্তর পাঠানো
+          // ৪. ফেসবুকে উত্তর পাঠানো
           await sendTextMessage(senderId, botReply);
 
         } catch (botErr) {
