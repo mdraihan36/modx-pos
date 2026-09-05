@@ -13,7 +13,7 @@ app.use(express.json());
 
 initDB();
 
-// জেমিনি ক্লায়েন্ট ইনিশিয়ালাইজ
+// জেমিনি ক্লায়েন্ট ইনিশিয়ালাইজ
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
@@ -412,10 +412,11 @@ app.post('/webhook', async (req, res) => {
         try {
           let productListContext = "আমাদের দোকানে বর্তমানে কোনো পণ্য তালিকাভুক্ত নেই।";
           if (pool) {
-            const prodRes = await pool.query('SELECT name, selling_price, stock, category FROM products');
+            // এখানে category কলামটি বাদ দেওয়া হয়েছে যাতে কোনো এরর না আসে
+            const prodRes = await pool.query('SELECT name, selling_price, stock FROM products');
             if (prodRes.rows.length > 0) {
               productListContext = prodRes.rows.map(p => 
-                `- ${p.name} (${p.category}): দাম Tk ${p.selling_price}, স্টক আছে ${p.stock} পিস`
+                `- ${p.name}: দাম Tk ${p.selling_price}, স্টক আছে ${p.stock} পিস`
               ).join('\n');
             }
           }
@@ -425,11 +426,11 @@ app.post('/webhook', async (req, res) => {
             model: 'gemini-1.5-flash',
             systemInstruction: `
               তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
-              তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
-              আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
+              তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
+              আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
               ${productListContext}
 
-              নিয়মাবলী:
+              নিয়মাবলী:
               - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
               - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
             `
