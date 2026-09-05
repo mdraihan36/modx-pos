@@ -16,7 +16,7 @@ initDB();
 
 // ---------------- API ROUTES ----------------
 
-// ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
+// ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
 app.get('/api/bootstrap-data', async (req, res) => {
   try {
     if (!pool) return res.json({});
@@ -26,6 +26,7 @@ app.get('/api/bootstrap-data', async (req, res) => {
     const expenses = await pool.query('SELECT * FROM expenses ORDER BY id DESC LIMIT 100');
     const jobCards = await pool.query('SELECT * FROM job_cards ORDER BY id DESC');
     const partners = await pool.query('SELECT * FROM partners ORDER BY id DESC');
+    const suppliers = await pool.query('SELECT * FROM suppliers ORDER BY id DESC');
     
     let partnerTx = { rows: [] };
     try {
@@ -39,6 +40,16 @@ app.get('/api/bootstrap-data', async (req, res) => {
 
     const deliveries = await pool.query('SELECT * FROM courier_deliveries ORDER BY id DESC');
     const fbOrders = await pool.query('SELECT * FROM fb_orders ORDER BY id DESC');
+    
+    let returnLogs = { rows: [] };
+    try {
+      returnLogs = await pool.query(`
+        SELECT r.*, pr.name AS product_name 
+        FROM returns r 
+        LEFT JOIN products pr ON r.product_id = pr.id 
+        ORDER BY r.id DESC LIMIT 100
+      `);
+    } catch (e) {}
 
     res.json({
       products: products.rows,
@@ -48,17 +59,163 @@ app.get('/api/bootstrap-data', async (req, res) => {
       jobCards: jobCards.rows,
       dealers: partners.rows.filter(p => p.role === 'DEALER'),
       resellers: partners.rows.filter(p => p.role === 'RESELLER'),
+      suppliers: suppliers.rows,
       dealerTransactions: partnerTx.rows.filter(t => t.type === 'SALE' || t.type === 'PAYMENT'),
       payoutLogs: partnerTx.rows.filter(t => t.type === 'PAYOUT'),
       deliveries: deliveries.rows,
-      fbOrders: fbOrders.rows
+      fbOrders: fbOrders.rows,
+      returns: returnLogs.rows
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ২. ইনভয়েস তৈরি এবং স্টক স্বয়ংক্রিয়ভাবে আপডেট
+// ২. ক্যাটাগরি রাউট (Get & Add)
+app.get('/api/categories', async (req, res) => {
+  try {
+    if (!pool) return res.json([]);
+    const { rows } = await pool.query('SELECT * FROM categories ORDER BY name ASC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/categories', async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Category name required' });
+  try {
+    if (!pool) return res.json({ success: true, category: { name } });
+    const { rows } = await pool.query(
+      'INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING RETURNING *',
+      [name.trim()]
+    );
+    res.json({ success: true, category: rows[0] || { name } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ৩. নতুন পার্টনার তৈরি (Reseller / B2B Dealer)
+app.post('/api/partners/add', async (req, res) => {
+  const { name, company, phone, role, payout_method, payout_account } = req.body;
+  if (!name || !phone || !role) return res.status(400).json({ error: 'Name, Phone and Role required' });
+  try {
+    if (!pool) return res.json({ success: true });
+    const { rows } = await pool.query(
+      `INSERT INTO partners (name, company, phone, role, payout_method, payout_account)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name, company || '', phone, role.toUpperCase(), payout_method || 'Cash', payout_account || '']
+    );
+    res.json({ success: true, partner: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ৪. নতুন সাপ্লায়ার তৈরি
+app.post('/api/suppliers/add', async (req, res) => {
+  const { name, phone, company } = req.body;
+  if (!name) return res.status(400).json({ error: 'Supplier name required' });
+  try {
+    if (!pool) return res.json({ success: true });
+    const { rows } = await pool.query(
+      `INSERT INTO suppliers (name, phone, company) VALUES ($1, $2, $3) RETURNING *`,
+      [name, phone || '', company || '']
+    );
+    res.json({ success: true, supplier: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ৫. কুরিয়ার পার্সেল বুকিং এবং ডেলিভারি স্ট্যাটাস আপডেট
+app.post('/api/deliveries/add', async (req, res) => {
+  const { courier_name, tracking_code, recipient_name, recipient_phone, recipient_address, cod_amount, reseller_page } = req.body;
+  try {
+    if (!pool) return res.json({ success: true });
+    const { rows } = await pool.query(
+      `INSERT INTO courier_deliveries (courier_name, tracking_code, recipient_name, recipient_phone, recipient_address, cod_amount, reseller_page)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [courier_name, tracking_code, recipient_name, recipient_phone, recipient_address, cod_amount || 0, reseller_page || 'Direct Sale']
+    );
+    res.json({ success: true, delivery: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/deliveries/:id', async (req, res) => {
+  const { id } = req.params;
+  const { delivery_status } = req.body;
+  try {
+    if (!pool) return res.json({ success: true });
+    const { rows } = await pool.query(
+      'UPDATE courier_deliveries SET delivery_status = $1 WHERE id = $2 RETURNING *',
+      [delivery_status, id]
+    );
+    res.json({ success: true, delivery: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ৬. ফেসবুক অর্ডার স্ট্যাটাস আপডেট
+app.patch('/api/facebook-orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    if (!pool) return res.json({ success: true });
+    const { rows } = await pool.query(
+      'UPDATE fb_orders SET order_status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    res.json({ success: true, order: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ৭. পণ্য রিটার্ন হ্যান্ডলার (Sale Return / Purchase Return & Auto Stock Adjustment)
+app.post('/api/returns', async (req, res) => {
+  const { return_type, reference_id, product_id, quantity, refund_amount, reason } = req.body;
+  if (!return_type || !product_id || !quantity) {
+    return res.status(400).json({ error: 'Return type, Product and Quantity required' });
+  }
+  if (!pool) return res.json({ success: true });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // রিটার্ন টেবিলে সেভ
+    const retRes = await client.query(
+      `INSERT INTO returns (return_type, reference_id, product_id, quantity, refund_amount, reason)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [return_type, reference_id || 'N/A', product_id, quantity, refund_amount || 0, reason || '']
+    );
+
+    // স্টক অটো-অ্যাডজাস্ট
+    if (return_type === 'SALE_RETURN') {
+      // কাস্টমার ফেরত দিলে দোকানে স্টক বাড়বে (+)
+      await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [quantity, product_id]);
+    } else if (return_type === 'PURCHASE_RETURN') {
+      // সাপ্লায়ারকে ফেরত দিলে দোকান থেকে স্টক কমবে (-)
+      await client.query('UPDATE products SET stock = stock - $1 WHERE id = $2', [quantity, product_id]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, returnRecord: retRes.rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ৮. ইনভয়েস তৈরি এবং স্টক স্বয়ংক্রিয়ভাবে আপডেট
 app.post('/api/invoices/create', async (req, res) => {
   const { invoice_number, order_type, customer_name, customer_phone, bike_number, items, total_amount, paid_amount, total_cogs, profit, payment_method } = req.body;
   if (!pool) return res.json({ success: true, offline: true });
@@ -88,7 +245,7 @@ app.post('/api/invoices/create', async (req, res) => {
   }
 });
 
-// ৩. ইউনিভার্সাল সার্চ (ফোন নম্বর বা বাইক নম্বর দিয়ে সকল রিপোর্ট খোঁজা)
+// ৯. ইউনিভার্সাল সার্চ (ফোন নম্বর বা বাইক নম্বর দিয়ে সকল রেকর্ড বের করা)
 app.get('/api/search-history', async (req, res) => {
   const query = req.query.q?.trim();
   if (!query) return res.status(400).json({ error: 'সার্চ কিওয়ার্ড দিন' });
@@ -140,7 +297,7 @@ app.get('/api/search-history', async (req, res) => {
   }
 });
 
-// ৪. পণ্য যুক্ত করার ব্যাকএন্ড রুট
+// ১০. পণ্য যুক্ত করার ব্যাকএন্ড রুট
 app.post('/api/products/add', async (req, res) => {
   const { name, sku, category, cost_price, reseller_base_price, selling_price, stock, supplier_name } = req.body;
   if (!pool) return res.json({ success: true, offline: true });
@@ -171,7 +328,7 @@ app.post('/api/products/add', async (req, res) => {
   }
 });
 
-// ৫. খরচ (Expenses)
+// ১১. খরচ (Expenses)
 app.post('/api/expenses', async (req, res) => {
   const { title, category, amount } = req.body;
   try {
@@ -186,7 +343,7 @@ app.post('/api/expenses', async (req, res) => {
   }
 });
 
-// ৬. জব কার্ড (Workshop)
+// ১২. জব কার্ড (Workshop)
 app.post('/api/workshop/jobcard', async (req, res) => {
   const { bike_number, customer_name, customer_phone, service_type, mechanic_name } = req.body;
   try {

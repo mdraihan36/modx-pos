@@ -33,12 +33,17 @@ const DEMO_JOBS = [
 ];
 
 const DEMO_DEALERS = [
-  { id: 101, name: 'Rafiqul Motors', company: 'Rafiqul Enterprise', phone: '01711223344', total_supplied: 85000, total_paid: 50000, current_due: 35000 }
+  { id: 101, name: 'Rafiqul Motors', company: 'Rafiqul Enterprise', phone: '01711223344', role: 'DEALER', current_due: 35000 }
 ];
 
 const DEMO_RESELLERS = [
-  { id: 201, name: 'Tanvir Hossain', company: 'MotoZone BD', phone: '01899112233', payout_method: 'bKash', payout_account: '01899112233', total_earned_profit: 3200, paid_profit: 2000, pending_payout: 1200 },
-  { id: 202, name: 'Sabbir Ahmed', company: 'Biker Point Dhaka', phone: '01755667788', payout_method: 'Bank Transfer', payout_account: 'City Bank (1502938471)', total_earned_profit: 4500, paid_profit: 4500, pending_payout: 0 }
+  { id: 201, name: 'Tanvir Hossain', company: 'MotoZone BD', phone: '01899112233', role: 'RESELLER', pending_payout: 1200 },
+  { id: 202, name: 'Sabbir Ahmed', company: 'Biker Point Dhaka', phone: '01755667788', role: 'RESELLER', pending_payout: 0 }
+];
+
+const DEMO_SUPPLIERS = [
+  { id: 301, name: 'Padma Oil Distributors', company: 'Padma Oil BD', phone: '01711000000' },
+  { id: 302, name: 'Meghna Motors Ltd', company: 'Meghna Group', phone: '01811998877' }
 ];
 
 const DEMO_DELIVERIES = [
@@ -51,9 +56,7 @@ const DEMO_FB_ORDERS = [
 ];
 
 export default function App() {
-  // Theme Toggle: dark or light
   const [theme, setTheme] = useState(localStorage.getItem('modx_theme') || 'dark');
-  
   const isDark = theme === 'dark';
   const toggleTheme = () => {
     const nextTheme = isDark ? 'light' : 'dark';
@@ -61,7 +64,6 @@ export default function App() {
     localStorage.setItem('modx_theme', nextTheme);
   };
 
-  // Dynamic Theme Colors
   const themeStyles = {
     bg: isDark ? '#090d16' : '#f8fafc',
     cardBg: isDark ? '#0f172a' : '#ffffff',
@@ -70,13 +72,14 @@ export default function App() {
     textMain: isDark ? '#f8fafc' : '#0f172a',
     textMuted: isDark ? '#64748b' : '#64748b',
     headerBg: isDark ? '#0f172a' : '#ffffff',
-    tableBorder: isDark ? '#1e293b' : '#e2e8f0',
     primary: '#e11d48'
   };
 
   const [activeTab, setActiveTab] = useState('pos');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categories, setCategories] = useState(['All', 'Lubricants', 'Braking System', 'Intake System', 'Ignition', 'Drivetrain', 'Electrical']);
+  const [newCatInput, setNewCatInput] = useState('');
 
   // Search History
   const [globalSearchInput, setGlobalSearchInput] = useState('');
@@ -91,8 +94,10 @@ export default function App() {
   const [jobCards, setJobCards] = useState(DEMO_JOBS);
   const [dealers, setDealers] = useState(DEMO_DEALERS);
   const [resellers, setResellers] = useState(DEMO_RESELLERS);
+  const [suppliers, setSuppliers] = useState(DEMO_SUPPLIERS);
   const [deliveries, setDeliveries] = useState(DEMO_DELIVERIES);
   const [fbOrders, setFbOrders] = useState(DEMO_FB_ORDERS);
+  const [returnsHistory, setReturnsHistory] = useState([]);
 
   // POS State
   const [cart, setCart] = useState([]);
@@ -102,15 +107,13 @@ export default function App() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [bikeNumber, setBikeNumber] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Payment
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [selectedBank, setSelectedBank] = useState('Islami Bank Bangladesh PLC');
   const [bankTxnRef, setBankTxnRef] = useState('');
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const invoicePdfRef = useRef();
 
-  // Inputs
+  // Stock Inward Inputs
   const [newProdName, setNewProdName] = useState('');
   const [newProdSKU, setNewProdSKU] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('Lubricants');
@@ -120,10 +123,23 @@ export default function App() {
   const [newProdStock, setNewProdStock] = useState('');
   const [newSupplierName, setNewSupplierName] = useState('');
 
-  const [expenseTitle, setExpenseTitle] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('General');
-  const [expenseAmount, setExpenseAmount] = useState('');
+  // Partner / Entity Registration Inputs
+  const [partnerType, setPartnerType] = useState('RESELLER');
+  const [partnerName, setPartnerName] = useState('');
+  const [partnerCompany, setPartnerCompany] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [payoutMethod, setPayoutMethod] = useState('bKash');
+  const [payoutAccount, setPayoutAccount] = useState('');
 
+  // Return Processing State
+  const [returnType, setReturnType] = useState('SALE_RETURN');
+  const [returnRefId, setReturnRefId] = useState('');
+  const [returnProductId, setReturnProductId] = useState('');
+  const [returnQty, setReturnQty] = useState('');
+  const [returnRefundAmt, setReturnRefundAmt] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+
+  // Workshop Job Inputs
   const [newJobBike, setNewJobBike] = useState('');
   const [newJobCustomer, setNewJobCustomer] = useState('');
   const [newJobService, setNewJobService] = useState('');
@@ -144,10 +160,22 @@ export default function App() {
         setResellers(data.resellers);
         setSelectedResellerId(data.resellers[0].id);
       }
+      if (data.suppliers?.length) setSuppliers(data.suppliers);
       if (data.deliveries?.length) setDeliveries(data.deliveries);
       if (data.fbOrders?.length) setFbOrders(data.fbOrders);
+      if (data.returns?.length) setReturnsHistory(data.returns);
+
+      // Fetch dynamic categories
+      const catRes = await fetch('/api/categories');
+      if (catRes.ok) {
+        const catList = await catRes.json();
+        if (catList?.length) {
+          const names = ['All', ...catList.map(c => c.name)];
+          setCategories([...new Set(names)]);
+        }
+      }
     } catch (err) {
-      console.warn('Connected to local storage view. Server booting.');
+      console.warn('Bootstrapping server sync...');
     }
   };
 
@@ -155,6 +183,7 @@ export default function App() {
     fetchAllData();
   }, []);
 
+  // Universal Search
   const handleUniversalSearch = async () => {
     if (!globalSearchInput.trim()) return alert('Please enter phone or bike registration number');
     setIsSearchingHistory(true);
@@ -170,7 +199,119 @@ export default function App() {
     }
   };
 
-  const categories = ['All', 'Lubricants', 'Braking System', 'Intake System', 'Ignition', 'Drivetrain', 'Electrical'];
+  // 1. Add Category
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (!newCatInput.trim()) return alert('Enter category name');
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCatInput.trim() })
+      });
+      if (res.ok) {
+        setCategories([...categories, newCatInput.trim()]);
+        setNewProdCategory(newCatInput.trim());
+        setNewCatInput('');
+        alert('Category added successfully');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 2. Add Partner (Reseller, Dealer, Supplier)
+  const handleAddPartner = async (e) => {
+    e.preventDefault();
+    if (!partnerName || !partnerPhone) return alert('Name and phone required');
+
+    try {
+      if (partnerType === 'SUPPLIER') {
+        const res = await fetch('/api/suppliers/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: partnerName, phone: partnerPhone, company: partnerCompany })
+        });
+        if (res.ok) alert('Supplier registered');
+      } else {
+        const res = await fetch('/api/partners/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: partnerName,
+            company: partnerCompany,
+            phone: partnerPhone,
+            role: partnerType,
+            payout_method: payoutMethod,
+            payout_account: payoutAccount
+          })
+        });
+        if (res.ok) alert(`${partnerType} registered successfully`);
+      }
+      setPartnerName(''); setPartnerCompany(''); setPartnerPhone(''); setPayoutAccount('');
+      fetchAllData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 3. Status Updates
+  const handleUpdateCourierStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/deliveries/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delivery_status: status })
+      });
+      if (res.ok) fetchAllData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateFBStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/facebook-orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) fetchAllData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 4. Return Processing
+  const handleProcessReturn = async (e) => {
+    e.preventDefault();
+    if (!returnProductId || !returnQty || !returnRefundAmt) return alert('Select product, quantity and refund amount');
+
+    try {
+      const res = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          return_type: returnType,
+          reference_id: returnRefId || 'N/A',
+          product_id: Number(returnProductId),
+          quantity: Number(returnQty),
+          refund_amount: Number(returnRefundAmt),
+          reason: returnReason || 'Verified Return'
+        })
+      });
+
+      if (res.ok) {
+        alert('Return processed and inventory stock automatically adjusted');
+        setReturnRefId(''); setReturnQty(''); setReturnRefundAmt(''); setReturnReason('');
+        fetchAllData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 5. POS Terminal
   const activeReseller = resellers.find(r => r.id === Number(selectedResellerId));
 
   const addToCart = (product) => {
@@ -275,6 +416,7 @@ export default function App() {
     setLoading(false);
   };
 
+  // Add Product (Procurement)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!newProdName || !newProdCost || !newProdPrice || !newProdStock) return alert('Fill required product fields');
@@ -298,32 +440,13 @@ export default function App() {
       });
       if (res.ok) fetchAllData();
     } catch (err) {
-      console.warn('Added to local catalog session');
+      console.warn('Added to catalog');
     }
 
     setProducts([{ id: Date.now(), ...payload }, ...products]);
     setPurchaseLedger([{ id: Date.now(), created_at: new Date().toISOString().split('T')[0], product_name: payload.name, supplier_name: payload.supplier_name, quantity: payload.stock, total_cost: payload.cost_price * payload.stock }, ...purchaseLedger]);
     setNewProdName(''); setNewProdSKU(''); setNewProdCost(''); setNewProdResellerRate(''); setNewProdPrice(''); setNewProdStock(''); setNewSupplierName('');
-    alert('Stock added successfully');
-  };
-
-  const handleAddExpense = async (e) => {
-    e.preventDefault();
-    if (!expenseTitle || !expenseAmount) return alert('Enter expense title and amount');
-    const newExp = { id: Date.now(), created_at: new Date().toISOString().split('T')[0], title: expenseTitle, category: expenseCategory, amount: Number(expenseAmount) };
-    try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newExp)
-      });
-      if (res.ok) fetchAllData();
-    } catch (err) {
-      console.warn('Expense tracked locally');
-    }
-    setExpenses([newExp, ...expenses]);
-    setExpenseTitle(''); setExpenseAmount('');
-    alert('Expense recorded');
+    alert('Product added to inventory');
   };
 
   const addJobCard = async (e) => {
@@ -345,7 +468,7 @@ export default function App() {
       });
       if (res.ok) fetchAllData();
     } catch (err) {
-      console.warn('Job queued locally');
+      console.warn('Job saved');
     }
     setJobCards([newJ, ...jobCards]);
     setNewJobBike(''); setNewJobCustomer(''); setNewJobService(''); setNewJobMechanic('');
@@ -359,9 +482,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
-    } catch (err) {
-      console.warn('Status synchronized');
-    }
+    } catch (err) {}
   };
 
   const downloadInvoicePDF = () => {
@@ -415,17 +536,15 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Navigation Controls */}
-          <nav style={{ display: 'flex', background: themeStyles.innerBg, padding: '4px', borderRadius: '8px', border: `1px solid ${themeStyles.border}`, gap: '3px' }}>
+          <nav style={{ display: 'flex', background: themeStyles.innerBg, padding: '4px', borderRadius: '8px', border: `1px solid ${themeStyles.border}`, gap: '3px', overflowX: 'auto' }}>
             {[
               { id: 'pos', label: 'Terminal' },
-              { id: 'reports', label: 'Ledger Audit' },
-              { id: 'dealers', label: 'B2B Dealers' },
-              { id: 'resellers', label: 'Resellers' },
+              { id: 'returns', label: 'Returns Hub' },
+              { id: 'partners', label: 'Partners & B2B' },
               { id: 'courier', label: 'Fulfillment' },
+              { id: 'fb_orders', label: `Messenger (${fbOrders.length})` },
               { id: 'workshop', label: 'Job Cards' },
-              { id: 'inventory', label: 'Procurement' },
-              { id: 'fb_orders', label: `Messenger (${fbOrders.length})` }
+              { id: 'inventory', label: 'Procurement' }
             ].map(t => (
               <button
                 key={t.id}
@@ -439,7 +558,8 @@ export default function App() {
                   cursor: 'pointer',
                   background: activeTab === t.id ? themeStyles.primary : 'transparent',
                   color: activeTab === t.id ? '#ffffff' : themeStyles.textMuted,
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {t.label}
@@ -447,7 +567,6 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Theme Switcher Toggle Button */}
           <button
             onClick={toggleTheme}
             style={{
@@ -459,7 +578,6 @@ export default function App() {
               fontSize: '11px',
               fontWeight: '700',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
               cursor: 'pointer'
             }}
           >
@@ -480,7 +598,7 @@ export default function App() {
             </div>
 
             <div style={{ marginBottom: '18px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMuted, marginBottom: '8px' }}>Matching Invoices ({searchHistoryReport.invoices?.length || 0})</div>
+              <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMuted, marginBottom: '8px' }}>Invoices ({searchHistoryReport.invoices?.length || 0})</div>
               {searchHistoryReport.invoices?.length > 0 ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
@@ -525,7 +643,7 @@ export default function App() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{ flex: 1, minWidth: '280px', padding: '10px 14px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }}
                 />
-                <div style={{ display: 'flex', gap: '4px' }}>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                   {categories.map((cat) => (
                     <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', border: '1px solid', borderColor: selectedCategory === cat ? themeStyles.primary : themeStyles.border, background: selectedCategory === cat ? themeStyles.primary : themeStyles.cardBg, color: selectedCategory === cat ? '#ffffff' : themeStyles.textMuted, cursor: 'pointer' }}>
                       {cat}
@@ -649,15 +767,6 @@ export default function App() {
                 ))}
               </div>
 
-              {paymentMethod === 'bank' && (
-                <div style={{ background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', padding: '10px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} style={{ width: '100%', padding: '8px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '4px', color: themeStyles.textMain, fontSize: '11px', outline: 'none' }}>
-                    {['Islami Bank Bangladesh PLC', 'City Bank PLC', 'BRAC Bank PLC', 'Mutual Trust Bank PLC', 'Eastern Bank PLC'].map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                  <input placeholder="Terminal Reference / TrxID" value={bankTxnRef} onChange={(e) => setBankTxnRef(e.target.value)} style={{ width: '100%', padding: '8px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '4px', color: themeStyles.textMain, fontSize: '11px', boxSizing: 'border-box', outline: 'none' }} />
-                </div>
-              )}
-
               <div style={{ display: 'flex', justifyContent: 'space-between', color: themeStyles.textMuted, marginBottom: '16px' }}>
                 <span style={{ fontSize: '13px' }}>Gross Total:</span>
                 <span style={{ fontSize: '18px', fontWeight: '800', color: themeStyles.textMain }}>Tk {finalPayable.toLocaleString()}</span>
@@ -670,85 +779,215 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: AUDIT REPORTS */}
-        {activeTab === 'reports' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '18px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: themeStyles.textMuted, fontWeight: '600', textTransform: 'uppercase' }}>Gross Revenue</div>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: themeStyles.textMain, marginTop: '6px' }}>
-                  Tk {salesRecords.reduce((s, i) => s + Number(i.paid_amount || 0), 0).toLocaleString()}
-                </div>
-              </div>
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '18px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: themeStyles.textMuted, fontWeight: '600', textTransform: 'uppercase' }}>Procurement Sourcing</div>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: '#f59e0b', marginTop: '6px' }}>
-                  Tk {purchaseLedger.reduce((s, i) => s + Number(i.total_cost || 0), 0).toLocaleString()}
-                </div>
-              </div>
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '18px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: themeStyles.textMuted, fontWeight: '600', textTransform: 'uppercase' }}>Operational Overheads</div>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: '#ef4444', marginTop: '6px' }}>
-                  Tk {expenses.reduce((s, i) => s + Number(i.amount || 0), 0).toLocaleString()}
-                </div>
-              </div>
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '18px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: themeStyles.textMuted, fontWeight: '600', textTransform: 'uppercase' }}>Estimated Gross Margin</div>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: '#10b981', marginTop: '6px' }}>
-                  Tk {salesRecords.reduce((s, i) => s + Number(i.profit || 0), 0).toLocaleString()}
-                </div>
-              </div>
-            </div>
+        {/* TAB 2: RETURNS HUB (SALE / PURCHASE RETURN) */}
+        {activeTab === 'returns' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '24px' }}>
+            <form onSubmit={handleProcessReturn} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Process Return & Stock Reconcile</div>
+              
+              <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Return Classification:</label>
+              <select value={returnType} onChange={(e) => setReturnType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', outline: 'none' }}>
+                <option value="SALE_RETURN">Sale Return (Customer returned - Stock Increase +)</option>
+                <option value="PURCHASE_RETURN">Purchase Return (Returned to Supplier - Stock Decrease -)</option>
+              </select>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Transaction Ledger</div>
+              <input placeholder="Invoice / Order Ref No." value={returnRefId} onChange={(e) => setReturnRefId(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box', outline: 'none' }} />
+
+              <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Select Product:</label>
+              <select value={returnProductId} onChange={(e) => setReturnProductId(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', outline: 'none' }}>
+                <option value="">Select an Item</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>)}
+              </select>
+
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <input placeholder="Return Units *" type="number" value={returnQty} onChange={(e) => setReturnQty(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+                <input placeholder="Refund Amount (Tk) *" type="number" value={returnRefundAmt} onChange={(e) => setReturnRefundAmt(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+              </div>
+
+              <textarea placeholder="Reason for return..." value={returnReason} onChange={(e) => setReturnReason(e.target.value)} style={{ width: '100%', height: '65px', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '14px', boxSizing: 'border-box', outline: 'none', resize: 'none' }} />
+
+              <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm Return & Adjust Stock</button>
+            </form>
+
+            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Returns Audit History</div>
+              {returnsHistory.length > 0 ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                      <th style={{ padding: '8px' }}>Date</th>
+                      <th style={{ padding: '8px' }}>Type</th>
                       <th style={{ padding: '8px' }}>Ref</th>
-                      <th style={{ padding: '8px' }}>Entity</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>Amount</th>
+                      <th style={{ padding: '8px' }}>Product</th>
+                      <th style={{ padding: '8px' }}>Qty</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Refund</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {salesRecords.map(s => (
-                      <tr key={s.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                        <td style={{ padding: '8px', color: themeStyles.textMuted }}>{s.created_at}</td>
-                        <td style={{ padding: '8px', color: '#0ea5e9' }}>#{s.invoice_number}</td>
-                        <td style={{ padding: '8px', color: themeStyles.textMain }}>{s.customer_name}</td>
-                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: themeStyles.textMain }}>Tk {Number(s.paid_amount).toLocaleString()}</td>
+                    {returnsHistory.map(r => (
+                      <tr key={r.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                        <td style={{ padding: '8px' }}><span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '3px', fontWeight: '700', background: r.return_type === 'SALE_RETURN' ? '#065f46' : '#991b1b', color: '#fff' }}>{r.return_type}</span></td>
+                        <td style={{ padding: '8px', color: '#0ea5e9' }}>{r.reference_id}</td>
+                        <td style={{ padding: '8px', color: themeStyles.textMain }}>{r.product_name}</td>
+                        <td style={{ padding: '8px' }}>{r.quantity}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>Tk {r.refund_amount}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-
-              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Record Operating Expense</div>
-                <form onSubmit={handleAddExpense} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                  <input placeholder="Item title" value={expenseTitle} onChange={(e) => setExpenseTitle(e.target.value)} style={{ flex: 1.5, padding: '8px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-                  <input placeholder="Cost" type="number" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} style={{ width: '80px', padding: '8px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-                  <button type="submit" style={{ padding: '8px 14px', background: themeStyles.primary, border: 'none', color: '#fff', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>Submit</button>
-                </form>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <tbody>
-                    {expenses.map(e => (
-                      <tr key={e.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                        <td style={{ padding: '8px', color: themeStyles.textMuted }}>{e.created_at}</td>
-                        <td style={{ padding: '8px', color: themeStyles.textMain }}>{e.title}</td>
-                        <td style={{ padding: '8px', textAlign: 'right', color: '#ef4444', fontWeight: '700' }}>Tk {Number(e.amount).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: themeStyles.textMuted, textAlign: 'center', padding: '30px 0' }}>No return records tracked yet.</div>
+              )}
             </div>
           </div>
         )}
 
-        {/* TAB 3: WORKSHOP KANBAN */}
+        {/* TAB 3: PARTNERS, CATEGORIES & ENTITIES */}
+        {activeTab === 'partners' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px' }}>
+            <div>
+              {/* Partner Add Form */}
+              <form onSubmit={handleAddPartner} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '12px' }}>Register Partner / Entity</div>
+                
+                <select value={partnerType} onChange={(e) => setPartnerType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', outline: 'none' }}>
+                  <option value="RESELLER">Affiliate Reseller</option>
+                  <option value="DEALER">B2B Dealer</option>
+                  <option value="SUPPLIER">Distributor / Supplier</option>
+                </select>
+
+                <input placeholder="Name / Contact Person *" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
+                <input placeholder="Company / Page Name" value={partnerCompany} onChange={(e) => setPartnerCompany(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
+                <input placeholder="Phone Number *" value={partnerPhone} onChange={(e) => setPartnerPhone(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
+                
+                {partnerType !== 'SUPPLIER' && (
+                  <input placeholder="Payout Channel / Account (e.g. bKash 017...)" value={payoutAccount} onChange={(e) => setPayoutAccount(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                )}
+
+                <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Save Entity</button>
+              </form>
+
+              {/* Add Category Form */}
+              <form onSubmit={handleAddCategory} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '12px' }}>Create Category</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input placeholder="Category name..." value={newCatInput} onChange={(e) => setNewCatInput(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+                  <button type="submit" style={{ padding: '9px 16px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>Add</button>
+                </div>
+              </form>
+            </div>
+
+            {/* Entity List */}
+            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Registered Network Ledger</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                    <th style={{ padding: '8px' }}>Entity</th>
+                    <th style={{ padding: '8px' }}>Role</th>
+                    <th style={{ padding: '8px' }}>Phone</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Receivable / Due</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dealers, ...resellers, ...suppliers.map(s => ({ ...s, role: 'SUPPLIER', current_due: 0 }))].map((p, idx) => (
+                    <tr key={idx} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                      <td style={{ padding: '8px' }}><strong>{p.name}</strong> <span style={{ color: themeStyles.textMuted }}>({p.company})</span></td>
+                      <td style={{ padding: '8px' }}><span style={{ fontSize: '10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, padding: '2px 6px', borderRadius: '3px', fontWeight: '700' }}>{p.role || 'PARTNER'}</span></td>
+                      <td style={{ padding: '8px' }}>{p.phone}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#10b981', fontWeight: '700' }}>Tk {p.current_due || p.pending_payout || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: COURIER FULFILLMENT & REAL-TIME STATUS */}
+        {activeTab === 'courier' && (
+          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Courier Consignment & Live Status Reconcile</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                  <th style={{ padding: '10px' }}>Consignment</th>
+                  <th style={{ padding: '10px' }}>Consignee</th>
+                  <th style={{ padding: '10px' }}>COD</th>
+                  <th style={{ padding: '10px' }}>Update Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deliveries.map(d => (
+                  <tr key={d.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '2px 6px', borderRadius: '3px', fontWeight: '700' }}>{d.courier_name}</span>
+                      <div style={{ fontWeight: '700', marginTop: '4px' }}>{d.tracking_code}</div>
+                    </td>
+                    <td style={{ padding: '10px' }}>{d.recipient_name} ({d.recipient_phone})</td>
+                    <td style={{ padding: '10px', fontWeight: '700', color: '#10b981' }}>Tk {d.cod_amount}</td>
+                    <td style={{ padding: '10px' }}>
+                      <select
+                        value={d.delivery_status}
+                        onChange={(e) => handleUpdateCourierStatus(d.id, e.target.value)}
+                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', outline: 'none' }}
+                      >
+                        <option value="In Transit">In Transit</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Returned">Returned</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* TAB 5: MESSENGER CHATBOT ORDERS & STATUS UPDATE */}
+        {activeTab === 'fb_orders' && (
+          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain }}>Messenger Dispatch Orders & Verification</div>
+              <button onClick={fetchAllData} style={{ padding: '6px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>Sync Orders</button>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                  <th style={{ padding: '10px' }}>ID</th>
+                  <th style={{ padding: '10px' }}>Client</th>
+                  <th style={{ padding: '10px' }}>SKU Order</th>
+                  <th style={{ padding: '10px' }}>Consignee Address</th>
+                  <th style={{ padding: '10px' }}>Update Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fbOrders.map(o => (
+                  <tr key={o.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                    <td style={{ padding: '10px', color: themeStyles.textMuted }}>#{o.id}</td>
+                    <td style={{ padding: '10px', color: themeStyles.textMain, fontWeight: '600' }}>{o.customer_name} ({o.customer_phone})</td>
+                    <td style={{ padding: '10px', color: '#0ea5e9' }}>{o.items_ordered}</td>
+                    <td style={{ padding: '10px', color: themeStyles.textMuted }}>{o.delivery_address}</td>
+                    <td style={{ padding: '10px' }}>
+                      <select
+                        value={o.order_status}
+                        onChange={(e) => handleUpdateFBStatus(o.id, e.target.value)}
+                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', outline: 'none' }}
+                      >
+                        <option value="Pending Review">Pending Review</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Dispatched">Dispatched</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* TAB 6: WORKSHOP KANBAN */}
         {activeTab === 'workshop' && (
           <div>
             <form onSubmit={addJobCard} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 2fr 1.2fr auto', gap: '10px' }}>
@@ -781,19 +1020,36 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: PROCUREMENT & INVENTORY */}
+        {/* TAB 7: PROCUREMENT & STOCK INWARD */}
         {activeTab === 'inventory' && (
           <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '24px' }}>
             <form onSubmit={handleAddProduct} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Inward Consignment</div>
               <input placeholder="Item Description *" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
+              
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Category:</label>
+                <select value={newProdCategory} onChange={(e) => setNewProdCategory(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}>
+                  {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
               <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                 <input placeholder="Inward Cost" type="number" value={newProdCost} onChange={(e) => setNewProdCost(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
-                <input placeholder="Affiliate" type="number" value={newProdResellerRate} onChange={(e) => setNewProdResellerRate(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+                <input placeholder="Affiliate Rate" type="number" value={newProdResellerRate} onChange={(e) => setNewProdResellerRate(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
                 <input placeholder="MSRP" type="number" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
               </div>
+
               <input placeholder="Total Units *" type="number" value={newProdStock} onChange={(e) => setNewProdStock(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-              <input placeholder="Distributor Name" value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '16px', boxSizing: 'border-box', outline: 'none' }} />
+              
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Supplier:</label>
+                <select value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}>
+                  <option value="Direct Wholesale">Direct Wholesale</option>
+                  {suppliers.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company || s.phone})</option>)}
+                </select>
+              </div>
+
               <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Log to Stock</button>
             </form>
 
@@ -820,40 +1076,6 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {/* TAB 5: MESSENGER QUEUE */}
-        {activeTab === 'fb_orders' && (
-          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain }}>Messenger Dispatch Registry</div>
-              <button onClick={fetchAllData} style={{ padding: '6px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>Refresh Terminal</button>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                  <th style={{ padding: '10px' }}>ID</th>
-                  <th style={{ padding: '10px' }}>Client</th>
-                  <th style={{ padding: '10px' }}>SKU Order</th>
-                  <th style={{ padding: '10px' }}>Consignee Address</th>
-                  <th style={{ padding: '10px' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fbOrders.map(o => (
-                  <tr key={o.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                    <td style={{ padding: '10px', color: themeStyles.textMuted }}>#{o.id}</td>
-                    <td style={{ padding: '10px', color: themeStyles.textMain, fontWeight: '600' }}>{o.customer_name} ({o.customer_phone})</td>
-                    <td style={{ padding: '10px', color: '#0ea5e9' }}>{o.items_ordered}</td>
-                    <td style={{ padding: '10px', color: themeStyles.textMuted }}>{o.delivery_address}</td>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '700', background: isDark ? '#1e1017' : '#fee2e2', color: themeStyles.primary }}>{o.order_status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
 
