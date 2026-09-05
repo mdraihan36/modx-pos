@@ -7,14 +7,10 @@ const { pool, initDB } = require('./db');
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Initialize Database Tables
 initDB();
-
-// ---------------- API ROUTES ----------------
 
 // ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
 app.get('/api/bootstrap-data', async (req, res) => {
@@ -71,7 +67,7 @@ app.get('/api/bootstrap-data', async (req, res) => {
   }
 });
 
-// ২. ক্যাটাগরি রাউট (Get & Add)
+// ২. ক্যাটাগরি রাউট
 app.get('/api/categories', async (req, res) => {
   try {
     if (!pool) return res.json([]);
@@ -97,7 +93,7 @@ app.post('/api/categories', async (req, res) => {
   }
 });
 
-// ৩. নতুন পার্টনার তৈরি (Reseller / B2B Dealer)
+// ৩. নতুন পার্টনার তৈরি (Reseller / Dealer)
 app.post('/api/partners/add', async (req, res) => {
   const { name, company, phone, role, payout_method, payout_account } = req.body;
   if (!name || !phone || !role) return res.status(400).json({ error: 'Name, Phone and Role required' });
@@ -106,7 +102,7 @@ app.post('/api/partners/add', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO partners (name, company, phone, role, payout_method, payout_account)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [name, company || '', phone, role.toUpperCase(), payout_method || 'Cash', payout_account || '']
+      [name, company || '', phone, role.toUpperCase(), payout_method || 'bKash', payout_account || '']
     );
     res.json({ success: true, partner: rows[0] });
   } catch (err) {
@@ -130,7 +126,41 @@ app.post('/api/suppliers/add', async (req, res) => {
   }
 });
 
-// ৫. কুরিয়ার পার্সেল বুকিং এবং ডেলিভারি স্ট্যাটাস আপডেট
+// ৫. পণ্য যুক্ত করার ব্যাকএন্ড রুট
+app.post('/api/products/add', async (req, res) => {
+  const { name, sku, category, cost_price, reseller_base_price, selling_price, stock, supplier_name } = req.body;
+  if (!name || !cost_price || !selling_price || !stock) {
+    return res.status(400).json({ error: 'Missing required product fields' });
+  }
+  if (!pool) return res.json({ success: true, offline: true });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const pRes = await client.query(
+      `INSERT INTO products (name, sku, category, cost_price, reseller_base_price, selling_price, stock, min_stock)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 5) RETURNING *`,
+      [name, sku, category, cost_price, reseller_base_price, selling_price, stock]
+    );
+    const product = pRes.rows[0];
+
+    await client.query(
+      `INSERT INTO purchases (product_id, supplier_name, supplier_phone, quantity, purchase_price, total_cost)
+       VALUES ($1, $2, 'N/A', $3, $4, $5)`,
+      [product.id, supplier_name || 'Direct Wholesale', stock, cost_price, Number(cost_price) * Number(stock)]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, product });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ৬. কুরিয়ার পার্সেল বুকিং ও স্ট্যাটাস আপডেট
 app.post('/api/deliveries/add', async (req, res) => {
   const { courier_name, tracking_code, recipient_name, recipient_phone, recipient_address, cod_amount, reseller_page } = req.body;
   try {
@@ -161,7 +191,7 @@ app.patch('/api/deliveries/:id', async (req, res) => {
   }
 });
 
-// ৬. ফেসবুক অর্ডার স্ট্যাটাস আপডেট
+// ৭. ফেসবুক মেসেঞ্জার অর্ডার স্ট্যাটাস
 app.patch('/api/facebook-orders/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -177,7 +207,7 @@ app.patch('/api/facebook-orders/:id', async (req, res) => {
   }
 });
 
-// ৭. পণ্য রিটার্ন হ্যান্ডলার (Sale Return / Purchase Return & Auto Stock Adjustment)
+// ৮. পণ্য রিটার্ন হ্যান্ডলার
 app.post('/api/returns', async (req, res) => {
   const { return_type, reference_id, product_id, quantity, refund_amount, reason } = req.body;
   if (!return_type || !product_id || !quantity) {
@@ -189,19 +219,15 @@ app.post('/api/returns', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // রিটার্ন টেবিলে সেভ
     const retRes = await client.query(
       `INSERT INTO returns (return_type, reference_id, product_id, quantity, refund_amount, reason)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [return_type, reference_id || 'N/A', product_id, quantity, refund_amount || 0, reason || '']
     );
 
-    // স্টক অটো-অ্যাডজাস্ট
     if (return_type === 'SALE_RETURN') {
-      // কাস্টমার ফেরত দিলে দোকানে স্টক বাড়বে (+)
       await client.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [quantity, product_id]);
     } else if (return_type === 'PURCHASE_RETURN') {
-      // সাপ্লায়ারকে ফেরত দিলে দোকান থেকে স্টক কমবে (-)
       await client.query('UPDATE products SET stock = stock - $1 WHERE id = $2', [quantity, product_id]);
     }
 
@@ -215,7 +241,7 @@ app.post('/api/returns', async (req, res) => {
   }
 });
 
-// ৮. ইনভয়েস তৈরি এবং স্টক স্বয়ংক্রিয়ভাবে আপডেট
+// ৯. ইনভয়েস তৈরি
 app.post('/api/invoices/create', async (req, res) => {
   const { invoice_number, order_type, customer_name, customer_phone, bike_number, items, total_amount, paid_amount, total_cogs, profit, payment_method } = req.body;
   if (!pool) return res.json({ success: true, offline: true });
@@ -245,10 +271,10 @@ app.post('/api/invoices/create', async (req, res) => {
   }
 });
 
-// ৯. ইউনিভার্সাল সার্চ (ফোন নম্বর বা বাইক নম্বর দিয়ে সকল রেকর্ড বের করা)
+// ১০. ইউনিভার্সাল সার্চ
 app.get('/api/search-history', async (req, res) => {
   const query = req.query.q?.trim();
-  if (!query) return res.status(400).json({ error: 'সার্চ কিওয়ার্ড দিন' });
+  if (!query) return res.status(400).json({ error: 'Search query required' });
   if (!pool) return res.json({ success: true, invoices: [], workshopJobs: [], fbOrders: [], supplierPurchases: [], partnerLedger: [] });
 
   const searchPattern = `%${query}%`;
@@ -297,38 +323,7 @@ app.get('/api/search-history', async (req, res) => {
   }
 });
 
-// ১০. পণ্য যুক্ত করার ব্যাকএন্ড রুট
-app.post('/api/products/add', async (req, res) => {
-  const { name, sku, category, cost_price, reseller_base_price, selling_price, stock, supplier_name } = req.body;
-  if (!pool) return res.json({ success: true, offline: true });
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const pRes = await client.query(
-      `INSERT INTO products (name, sku, category, cost_price, reseller_base_price, selling_price, stock, min_stock)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 5) RETURNING *`,
-      [name, sku, category, cost_price, reseller_base_price, selling_price, stock]
-    );
-    const product = pRes.rows[0];
-
-    await client.query(
-      `INSERT INTO purchases (product_id, supplier_name, supplier_phone, quantity, purchase_price, total_cost)
-       VALUES ($1, $2, 'N/A', $3, $4, $5)`,
-      [product.id, supplier_name || 'Direct Wholesale', stock, cost_price, Number(cost_price) * Number(stock)]
-    );
-
-    await client.query('COMMIT');
-    res.json({ success: true, product });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// ১১. খরচ (Expenses)
+// ১১. খরচ
 app.post('/api/expenses', async (req, res) => {
   const { title, category, amount } = req.body;
   try {
@@ -343,7 +338,7 @@ app.post('/api/expenses', async (req, res) => {
   }
 });
 
-// ১২. জব কার্ড (Workshop)
+// ১২. জব কার্ড
 app.post('/api/workshop/jobcard', async (req, res) => {
   const { bike_number, customer_name, customer_phone, service_type, mechanic_name } = req.body;
   try {
@@ -371,7 +366,7 @@ app.patch('/api/workshop/jobcard/:id', async (req, res) => {
   }
 });
 
-// --- Facebook Webhook & Chatbot Setup ---
+// Facebook Webhook
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'modx_secret_bot_token';
 const userSessions = {};
@@ -459,14 +454,13 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ---------------- SERVE FRONTEND BUILD ----------------
+// Serve Frontend Build
 app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 
 app.get(/^(?!\/api|\/webhook).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
 });
 
-// Server Listen
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

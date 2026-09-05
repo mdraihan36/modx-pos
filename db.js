@@ -23,7 +23,7 @@ const initDB = async () => {
   let client;
   try {
     client = await pool.connect();
-    console.log(' Connected to PostgreSQL Database');
+    console.log(' Connected to Neon PostgreSQL Database');
 
     // ১. ব্রাঞ্চ টেবিল
     await client.query(`
@@ -33,29 +33,7 @@ const initDB = async () => {
       );
     `);
 
-    // ২. ইউজার টেবিল
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(50) NOT NULL,
-        branch_id INT REFERENCES branches(id) ON DELETE SET NULL
-      );
-    `);
-
-    // ৩. কাস্টমার টেবিল
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS customers (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        phone VARCHAR(20) UNIQUE NOT NULL,
-        loyalty_points INT DEFAULT 0
-      );
-    `);
-
-    // ৪. ক্যাটাগরি টেবিল (নতুন যুক্ত করা হয়েছে)
+    // ২. ক্যাটাগরি টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS categories (
         id SERIAL PRIMARY KEY,
@@ -64,7 +42,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৫. সাপ্লায়ার টেবিল
+    // ৩. সাপ্লায়ার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS suppliers (
         id SERIAL PRIMARY KEY,
@@ -75,7 +53,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৬. প্রোডাক্ট ক্যাটালগ টেবিল
+    // ৪. প্রোডাক্ট ক্যাটালগ টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -91,7 +69,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৭. পারচেস হিস্ট্রি টেবিল
+    // ৫. পারচেস হিস্ট্রি টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS purchases (
         id SERIAL PRIMARY KEY,
@@ -106,7 +84,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৮. খরচ (Expenses) টেবিল
+    // ৬. খরচ (Expenses) টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
@@ -117,7 +95,7 @@ const initDB = async () => {
       );
     `);
 
-    // ৯. জব কার্ড (বাইক সার্ভিসিং) টেবিল
+    // ৭. জব কার্ড টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS job_cards (
         id SERIAL PRIMARY KEY,
@@ -131,7 +109,7 @@ const initDB = async () => {
       );
     `);
 
-    // ১০. ইনভয়েস টেবিল
+    // ৮. ইনভয়েস টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS invoices (
         id SERIAL PRIMARY KEY,
@@ -150,7 +128,7 @@ const initDB = async () => {
       );
     `);
 
-    // ১১. পার্টনারস (ডিলার ও রিসেলার) টেবিল
+    // ৯. পার্টনারস টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS partners (
         id SERIAL PRIMARY KEY,
@@ -170,7 +148,7 @@ const initDB = async () => {
       );
     `);
 
-    // ১২. পার্টনার ট্রানজ্যাকশন লেজার
+    // ১০. পার্টনার ট্রানজ্যাকশন লেজার
     await client.query(`
       CREATE TABLE IF NOT EXISTS partner_transactions (
         id SERIAL PRIMARY KEY,
@@ -184,7 +162,7 @@ const initDB = async () => {
       );
     `);
 
-    // ১৩. কুরিয়ার ডেলিভারি ট্র্যাকিং
+    // ১১. কুরিয়ার ডেলিভারি ট্র্যাকিং
     await client.query(`
       CREATE TABLE IF NOT EXISTS courier_deliveries (
         id SERIAL PRIMARY KEY,
@@ -200,11 +178,11 @@ const initDB = async () => {
       );
     `);
 
-    // ১৪. ফেসবুক মেসেঞ্জার চ্যাটবট অর্ডার টেবিল
+    // ১২. ফেসবুক চ্যাটবট অর্ডার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS fb_orders (
         id SERIAL PRIMARY KEY,
-        sender_id VARCHAR(100) NOT NULL,
+        sender_id VARCHAR(100),
         customer_name VARCHAR(150),
         customer_phone VARCHAR(50),
         delivery_address TEXT,
@@ -214,7 +192,7 @@ const initDB = async () => {
       );
     `);
 
-    // ১৫. রিটার্ন টেবিল (সেলস ও পারচেস রিটার্ন - নতুন যুক্ত করা হয়েছে)
+    // ১৩. রিটার্ন টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS returns (
         id SERIAL PRIMARY KEY,

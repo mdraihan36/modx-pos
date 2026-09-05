@@ -3,7 +3,24 @@ import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
-// Professional Default Fallback Data
+// Bangladeshi Commercial & Islamic Banks
+const BD_BANK_LIST = [
+  'Islami Bank Bangladesh PLC',
+  'BRAC Bank PLC',
+  'City Bank PLC',
+  'Dutch-Bangla Bank PLC (DBBL)',
+  'Eastern Bank PLC (EBL)',
+  'Dhaka Bank PLC',
+  'Mutual Trust Bank PLC (MTB)',
+  'Prime Bank PLC',
+  'Pubali Bank PLC',
+  'Southeast Bank PLC',
+  'Sonali Bank PLC',
+  'Social Islami Bank PLC',
+  'Standard Chartered Bangladesh'
+];
+
+// Fallback Demo Data
 const DEMO_PRODUCTS = [
   { id: 1, name: 'Engine Oil 10W-30 (Mobil 1L)', sku: 'OIL-10W30-01', category: 'Lubricants', cost_price: 520, reseller_base_price: 580, selling_price: 650, stock: 24, min_stock: 5 },
   { id: 2, name: 'Disc Brake Pad (Front Dual Piston)', sku: 'BRK-PAD-02', category: 'Braking System', cost_price: 320, reseller_base_price: 380, selling_price: 450, stock: 18, min_stock: 4 },
@@ -14,17 +31,11 @@ const DEMO_PRODUCTS = [
 ];
 
 const DEMO_SALES = [
-  { id: 9101, created_at: '2026-09-03', invoice_number: 'INV-9101', bike_number: 'DHAKA-METRO-HA-1234', customer_name: 'Tanvir Rahman', paid_amount: 1100, profit: 260 },
-  { id: 9102, created_at: '2026-09-04', invoice_number: 'INV-9102', bike_number: 'DHAKA-METRO-LA-5678', customer_name: 'Rafiqul Islam', paid_amount: 2850, profit: 650 }
+  { id: 9101, created_at: '2026-09-03', invoice_number: 'INV-9101', bike_number: 'DHAKA-METRO-HA-1234', customer_name: 'Tanvir Rahman', total_amount: 1100, paid_amount: 1100, due_amount: 0, payment_method: 'CASH' }
 ];
 
 const DEMO_PURCHASES = [
-  { id: 1, created_at: '2026-09-04', product_name: 'Engine Oil 10W-30 (Mobil 1L)', supplier_name: 'Padma Oil Distributors', supplier_phone: '01711000000', quantity: 30, purchase_price: 520, total_cost: 15600 }
-];
-
-const DEMO_EXPENSES = [
-  { id: 1, created_at: '2026-09-04', title: 'Workshop Daily Utility', category: 'General', amount: 850 },
-  { id: 2, created_at: '2026-09-01', title: 'Workshop Rent', category: 'Rent', amount: 25000 }
+  { id: 1, created_at: '2026-09-04', product_name: 'Engine Oil 10W-30 (Mobil 1L)', supplier_name: 'Padma Oil Distributors', quantity: 30, purchase_price: 520, total_cost: 15600 }
 ];
 
 const DEMO_JOBS = [
@@ -38,21 +49,21 @@ const DEMO_DEALERS = [
 
 const DEMO_RESELLERS = [
   { id: 201, name: 'Tanvir Hossain', company: 'MotoZone BD', phone: '01899112233', role: 'RESELLER', pending_payout: 1200 },
-  { id: 202, name: 'Sabbir Ahmed', company: 'Biker Point Dhaka', phone: '01755667788', role: 'RESELLER', pending_payout: 0 }
+  { id: 202, name: 'Sabbir Ahmed', company: 'Biker Point Dhaka', phone: '01755667788', role: 'RESELLER', pending_payout: 3500 }
 ];
 
 const DEMO_SUPPLIERS = [
-  { id: 301, name: 'Padma Oil Distributors', company: 'Padma Oil BD', phone: '01711000000' },
-  { id: 302, name: 'Meghna Motors Ltd', company: 'Meghna Group', phone: '01811998877' }
+  { id: 301, name: 'Padma Oil Distributors', company: 'Padma Oil BD', phone: '01711000000', payable_due: 5600 },
+  { id: 302, name: 'Nabila (MotoPrak)', company: 'MotoPrak Enterprise', phone: '01811998877', payable_due: 12000 }
 ];
 
 const DEMO_DELIVERIES = [
-  { id: 1, courier_name: 'Steadfast', tracking_code: 'STF-849201', recipient_name: 'Rakibul Hasan', recipient_phone: '01711998877', recipient_address: 'Sector 7, Uttara, Dhaka', cod_amount: 1950, delivery_status: 'In Transit', reseller_page: 'MotoZone BD' },
-  { id: 2, courier_name: 'Sundarban', tracking_code: 'SBD-592014', recipient_name: 'Mahmudul Karim', recipient_phone: '01822334455', recipient_address: 'Chawkbazar, Chittagong', cod_amount: 1300, delivery_status: 'Delivered', reseller_page: 'Direct Sale' }
+  { id: 1, courier_name: 'Steadfast', tracking_code: 'STF-849201', recipient_name: 'Rakibul Hasan', recipient_phone: '01711998877', cod_amount: 1950, delivery_status: 'In Transit' },
+  { id: 2, courier_name: 'Sundarban', tracking_code: 'SBD-592014', recipient_name: 'Mahmudul Karim', recipient_phone: '01822334455', cod_amount: 1300, delivery_status: 'Delivered' }
 ];
 
 const DEMO_FB_ORDERS = [
-  { id: 1, customer_name: 'Kabir Ahmed', customer_phone: '01700112233', items_ordered: 'Laser Iridium Spark Plug (2 Pcs)', delivery_address: 'Mirpur 10, Dhaka', order_status: 'Pending Review' }
+  { id: 1, customer_name: 'Kabir Ahmed', customer_phone: '01700112233', items_ordered: 'Laser Iridium Spark Plug', delivery_address: 'Mirpur 10, Dhaka', order_status: 'Pending Review' }
 ];
 
 export default function App() {
@@ -68,29 +79,23 @@ export default function App() {
     bg: isDark ? '#090d16' : '#f8fafc',
     cardBg: isDark ? '#0f172a' : '#ffffff',
     innerBg: isDark ? '#020617' : '#f1f5f9',
-    border: isDark ? '#1e293b' : '#e2e8f0',
+    border: isDark ? '#1e293b' : '#cbd5e1',
     textMain: isDark ? '#f8fafc' : '#0f172a',
-    textMuted: isDark ? '#64748b' : '#64748b',
+    textMuted: isDark ? '#94a3b8' : '#64748b',
     headerBg: isDark ? '#0f172a' : '#ffffff',
     primary: '#e11d48'
   };
 
+  // Tabs: pos, ledger, courier, fb_orders, workshop, inventory, returns, partners
   const [activeTab, setActiveTab] = useState('pos');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [categories, setCategories] = useState(['All', 'Lubricants', 'Braking System', 'Intake System', 'Ignition', 'Drivetrain', 'Electrical', 'brake Hose']);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [categories, setCategories] = useState(['All', 'Lubricants', 'Braking System', 'Intake System', 'Ignition', 'Drivetrain', 'Electrical']);
-  const [newCatInput, setNewCatInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Search History
-  const [globalSearchInput, setGlobalSearchInput] = useState('');
-  const [searchHistoryReport, setSearchHistoryReport] = useState(null);
-  const [isSearchingHistory, setIsSearchingHistory] = useState(false);
-
-  // States
+  // Sourced Datasets
   const [products, setProducts] = useState(DEMO_PRODUCTS);
   const [salesRecords, setSalesRecords] = useState(DEMO_SALES);
   const [purchaseLedger, setPurchaseLedger] = useState(DEMO_PURCHASES);
-  const [expenses, setExpenses] = useState(DEMO_EXPENSES);
   const [jobCards, setJobCards] = useState(DEMO_JOBS);
   const [dealers, setDealers] = useState(DEMO_DEALERS);
   const [resellers, setResellers] = useState(DEMO_RESELLERS);
@@ -99,39 +104,44 @@ export default function App() {
   const [fbOrders, setFbOrders] = useState(DEMO_FB_ORDERS);
   const [returnsHistory, setReturnsHistory] = useState([]);
 
-  // POS State
+  // POS / Checkout Register State
   const [cart, setCart] = useState([]);
-  const [orderType, setOrderType] = useState('direct');
+  const [orderType, setOrderType] = useState('direct'); // 'direct' or 'reseller'
   const [selectedResellerId, setSelectedResellerId] = useState(201);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [bikeNumber, setBikeNumber] = useState('');
-  const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [selectedBank, setSelectedBank] = useState('Islami Bank Bangladesh PLC');
   const [bankTxnRef, setBankTxnRef] = useState('');
+  const [paidAmountInput, setPaidAmountInput] = useState('');
   const [completedInvoice, setCompletedInvoice] = useState(null);
+  const [loading, setLoading] = useState(false);
   const invoicePdfRef = useRef();
 
   // Stock Inward Inputs
   const [newProdName, setNewProdName] = useState('');
-  const [newProdSKU, setNewProdSKU] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('Lubricants');
   const [newProdCost, setNewProdCost] = useState('');
   const [newProdResellerRate, setNewProdResellerRate] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdStock, setNewProdStock] = useState('');
-  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierName, setNewSupplierName] = useState('Direct Wholesale');
 
-  // Partner / Entity Registration Inputs
+  // Job Cards (Service Center)
+  const [newJobBike, setNewJobBike] = useState('');
+  const [newJobCustomer, setNewJobCustomer] = useState('');
+  const [newJobService, setNewJobService] = useState('');
+  const [newJobMechanic, setNewJobMechanic] = useState('');
+
+  // Partner Inputs
   const [partnerType, setPartnerType] = useState('RESELLER');
   const [partnerName, setPartnerName] = useState('');
   const [partnerCompany, setPartnerCompany] = useState('');
   const [partnerPhone, setPartnerPhone] = useState('');
-  const [payoutMethod, setPayoutMethod] = useState('bKash');
-  const [payoutAccount, setPayoutAccount] = useState('');
+  const [newCatInput, setNewCatInput] = useState('');
 
-  // Return Processing State
+  // Return Form State
   const [returnType, setReturnType] = useState('SALE_RETURN');
   const [returnRefId, setReturnRefId] = useState('');
   const [returnProductId, setReturnProductId] = useState('');
@@ -139,11 +149,9 @@ export default function App() {
   const [returnRefundAmt, setReturnRefundAmt] = useState('');
   const [returnReason, setReturnReason] = useState('');
 
-  // Workshop Job Inputs
-  const [newJobBike, setNewJobBike] = useState('');
-  const [newJobCustomer, setNewJobCustomer] = useState('');
-  const [newJobService, setNewJobService] = useState('');
-  const [newJobMechanic, setNewJobMechanic] = useState('');
+  // Search History
+  const [globalSearchInput, setGlobalSearchInput] = useState('');
+  const [searchHistoryReport, setSearchHistoryReport] = useState(null);
 
   const fetchAllData = async () => {
     try {
@@ -153,7 +161,6 @@ export default function App() {
       if (data.products?.length) setProducts(data.products);
       if (data.invoices?.length) setSalesRecords(data.invoices);
       if (data.purchases?.length) setPurchaseLedger(data.purchases);
-      if (data.expenses?.length) setExpenses(data.expenses);
       if (data.jobCards?.length) setJobCards(data.jobCards);
       if (data.dealers?.length) setDealers(data.dealers);
       if (data.resellers?.length) {
@@ -165,7 +172,6 @@ export default function App() {
       if (data.fbOrders?.length) setFbOrders(data.fbOrders);
       if (data.returns?.length) setReturnsHistory(data.returns);
 
-      // Fetch dynamic categories
       const catRes = await fetch('/api/categories');
       if (catRes.ok) {
         const catList = await catRes.json();
@@ -175,7 +181,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.warn('Bootstrapping server sync...');
+      console.warn('Bootstrapping offline mode.');
     }
   };
 
@@ -185,133 +191,17 @@ export default function App() {
 
   // Universal Search
   const handleUniversalSearch = async () => {
-    if (!globalSearchInput.trim()) return alert('Please enter phone or bike registration number');
-    setIsSearchingHistory(true);
+    if (!globalSearchInput.trim()) return alert('মোবাইল নম্বর অথবা বাইকের রেজিস্ট্রেশন নম্বর দিন');
     try {
       const res = await fetch(`/api/search-history?q=${encodeURIComponent(globalSearchInput.trim())}`);
       const data = await res.json();
       setSearchHistoryReport(data);
     } catch (err) {
-      console.error(err);
-      alert('Failed to retrieve history');
-    } finally {
-      setIsSearchingHistory(false);
+      alert('হিস্ট্রি লোড করতে সমস্যা হয়েছে');
     }
   };
 
-  // 1. Add Category
-  const handleAddCategory = async (e) => {
-    e.preventDefault();
-    if (!newCatInput.trim()) return alert('Enter category name');
-    try {
-      const res = await fetch('/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCatInput.trim() })
-      });
-      if (res.ok) {
-        setCategories([...categories, newCatInput.trim()]);
-        setNewProdCategory(newCatInput.trim());
-        setNewCatInput('');
-        alert('Category added successfully');
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // 2. Add Partner (Reseller, Dealer, Supplier)
-  const handleAddPartner = async (e) => {
-    e.preventDefault();
-    if (!partnerName || !partnerPhone) return alert('Name and phone required');
-
-    try {
-      if (partnerType === 'SUPPLIER') {
-        const res = await fetch('/api/suppliers/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: partnerName, phone: partnerPhone, company: partnerCompany })
-        });
-        if (res.ok) alert('Supplier registered');
-      } else {
-        const res = await fetch('/api/partners/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: partnerName,
-            company: partnerCompany,
-            phone: partnerPhone,
-            role: partnerType,
-            payout_method: payoutMethod,
-            payout_account: payoutAccount
-          })
-        });
-        if (res.ok) alert(`${partnerType} registered successfully`);
-      }
-      setPartnerName(''); setPartnerCompany(''); setPartnerPhone(''); setPayoutAccount('');
-      fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // 3. Status Updates
-  const handleUpdateCourierStatus = async (id, status) => {
-    try {
-      const res = await fetch(`/api/deliveries/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ delivery_status: status })
-      });
-      if (res.ok) fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleUpdateFBStatus = async (id, status) => {
-    try {
-      const res = await fetch(`/api/facebook-orders/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // 4. Return Processing
-  const handleProcessReturn = async (e) => {
-    e.preventDefault();
-    if (!returnProductId || !returnQty || !returnRefundAmt) return alert('Select product, quantity and refund amount');
-
-    try {
-      const res = await fetch('/api/returns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          return_type: returnType,
-          reference_id: returnRefId || 'N/A',
-          product_id: Number(returnProductId),
-          quantity: Number(returnQty),
-          refund_amount: Number(returnRefundAmt),
-          reason: returnReason || 'Verified Return'
-        })
-      });
-
-      if (res.ok) {
-        alert('Return processed and inventory stock automatically adjusted');
-        setReturnRefId(''); setReturnQty(''); setReturnRefundAmt(''); setReturnReason('');
-        fetchAllData();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // 5. POS Terminal
+  // Cart Functions
   const activeReseller = resellers.find(r => r.id === Number(selectedResellerId));
 
   const addToCart = (product) => {
@@ -368,32 +258,41 @@ export default function App() {
 
   const removeItem = (id) => setCart(cart.filter(item => item.id !== id));
 
-  const totalCustomerPayable = cart.reduce((sum, item) => sum + item.subtotal, 0);
-  const totalResellerBasePrice = cart.reduce((sum, item) => sum + item.reseller_subtotal, 0);
-  const totalCogsForCart = cart.reduce((sum, item) => sum + item.total_cost, 0);
-  const totalResellerProfit = orderType === 'reseller' ? Math.max(0, totalCustomerPayable - totalResellerBasePrice) : 0;
-  const finalPayable = totalCustomerPayable;
+  const totalBill = cart.reduce((s, i) => s + i.subtotal, 0);
+  const totalResellerBase = cart.reduce((s, i) => s + i.reseller_subtotal, 0);
+  const totalCogsForCart = cart.reduce((s, i) => s + i.total_cost, 0);
+  const resellerCommission = orderType === 'reseller' ? Math.max(0, totalBill - totalResellerBase) : 0;
+  
+  const actualPaidAmount = paidAmountInput !== '' ? Number(paidAmountInput) : totalBill;
+  const currentDueAmount = Math.max(0, totalBill - actualPaidAmount);
 
+  // Handle Checkout
   const handleCheckout = async () => {
-    if (!customerPhone.trim()) return alert('Customer phone number required');
-    if (cart.length === 0) return alert('Cart is empty');
+    if (!customerPhone.trim()) return alert('কাস্টমারের ফোন নম্বর দেওয়া আবশ্যক!');
+    if (!cart.length) return alert('বিলিং কাউন্টার সম্পূর্ণ খালি!');
 
     setLoading(true);
-    const paymentGatewayDetails = paymentMethod === 'bank' ? `${selectedBank} (Ref: ${bankTxnRef || 'CARD'})` : paymentMethod.toUpperCase();
-    const invoiceNum = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+    const paymentDetails = paymentMethod === 'bank' 
+      ? `${selectedBank} (Ref: ${bankTxnRef || 'Card/Online'})` 
+      : paymentMethod.toUpperCase();
 
+    const invNum = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     const invoicePayload = {
-      invoice_number: invoiceNum,
+      invoice_number: invNum,
       order_type: orderType,
-      customer_name: customerName || 'Walk-in Client',
+      reseller_info: orderType === 'reseller' ? activeReseller : null,
+      reseller_commission: resellerCommission,
+      customer_name: customerName || 'সাধারণ ক্রেতা (Walk-in)',
       customer_phone: customerPhone,
       bike_number: bikeNumber || 'N/A',
-      items: [...cart],
-      total_amount: totalCustomerPayable,
-      paid_amount: finalPayable,
+      items: cart,
+      total_amount: totalBill,
+      paid_amount: actualPaidAmount,
+      due_amount: currentDueAmount,
       total_cogs: totalCogsForCart,
-      profit: finalPayable - totalCogsForCart,
-      payment_method: paymentGatewayDetails
+      profit: totalBill - totalCogsForCart,
+      payment_method: paymentDetails,
+      date: new Date().toLocaleString()
     };
 
     try {
@@ -404,26 +303,31 @@ export default function App() {
       });
       if (res.ok) fetchAllData();
     } catch (err) {
-      console.warn('Saved in offline session mode');
+      console.warn('Offline session recorded');
     }
 
-    setSalesRecords([{ id: Date.now(), created_at: new Date().toISOString().split('T')[0], ...invoicePayload }, ...salesRecords]);
-    setCompletedInvoice({ ...invoicePayload, invoice_id: invoiceNum, date: new Date().toLocaleString() });
+    setSalesRecords([invoicePayload, ...salesRecords]);
+    setCompletedInvoice(invoicePayload);
     setCart([]);
-    setBikeNumber('');
     setCustomerName('');
     setCustomerPhone('');
+    setBikeNumber('');
+    setPaidAmountInput('');
+    setBankTxnRef('');
     setLoading(false);
   };
 
-  // Add Product (Procurement)
+  // Add Product
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    if (!newProdName || !newProdCost || !newProdPrice || !newProdStock) return alert('Fill required product fields');
+    if (!newProdName.trim()) return alert('পণ্যের নাম লিখুন!');
+    if (!newProdCost) return alert('কেনা দাম লিখুন!');
+    if (!newProdPrice) return alert('বিক্রয় মূল্য লিখুন!');
+    if (!newProdStock) return alert('মালের পরিমাণ লিখুন!');
 
     const payload = {
-      name: newProdName,
-      sku: newProdSKU || `SKU-${Date.now().toString().slice(-4)}`,
+      name: newProdName.trim(),
+      sku: `SKU-${Date.now().toString().slice(-5)}`,
       category: newProdCategory,
       cost_price: Number(newProdCost),
       reseller_base_price: Number(newProdResellerRate || newProdCost),
@@ -433,45 +337,46 @@ export default function App() {
     };
 
     try {
-      const res = await fetch('/api/products/add', {
+      await fetch('/api/products/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (res.ok) fetchAllData();
-    } catch (err) {
-      console.warn('Added to catalog');
-    }
+      fetchAllData();
+    } catch (err) {}
 
     setProducts([{ id: Date.now(), ...payload }, ...products]);
-    setPurchaseLedger([{ id: Date.now(), created_at: new Date().toISOString().split('T')[0], product_name: payload.name, supplier_name: payload.supplier_name, quantity: payload.stock, total_cost: payload.cost_price * payload.stock }, ...purchaseLedger]);
-    setNewProdName(''); setNewProdSKU(''); setNewProdCost(''); setNewProdResellerRate(''); setNewProdPrice(''); setNewProdStock(''); setNewSupplierName('');
-    alert('Product added to inventory');
+    setNewProdName('');
+    setNewProdCost('');
+    setNewProdResellerRate('');
+    setNewProdPrice('');
+    setNewProdStock('');
+    alert('পণ্য সফলভাবে ইনভেন্টরিতে যুক্ত হয়েছে!');
   };
 
+  // Service Center Job Cards
   const addJobCard = async (e) => {
     e.preventDefault();
-    if (!newJobBike.trim() || !newJobService.trim()) return alert('Registration and service type required');
+    if (!newJobBike.trim() || !newJobService.trim()) return alert('বাইক নম্বর ও সার্ভিসের বিবরণ দিন');
     const newJ = {
       id: Date.now(),
       bike_number: newJobBike.toUpperCase(),
-      customer_name: newJobCustomer || 'Client',
+      customer_name: newJobCustomer || 'কাস্টমার',
       service_type: newJobService,
-      mechanic_name: newJobMechanic || 'Master Technician',
+      mechanic_name: newJobMechanic || 'টেকনিশিয়ান',
       status: 'Queued'
     };
     try {
-      const res = await fetch('/api/workshop/jobcard', {
+      await fetch('/api/workshop/jobcard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newJ)
       });
-      if (res.ok) fetchAllData();
-    } catch (err) {
-      console.warn('Job saved');
-    }
+      fetchAllData();
+    } catch (err) {}
     setJobCards([newJ, ...jobCards]);
     setNewJobBike(''); setNewJobCustomer(''); setNewJobService(''); setNewJobMechanic('');
+    alert('সার্ভিস জব কার্ড খোলা হয়েছে!');
   };
 
   const updateJobStatus = async (id, newStatus) => {
@@ -485,6 +390,106 @@ export default function App() {
     } catch (err) {}
   };
 
+  // Status Handlers
+  const handleUpdateCourierStatus = async (id, status) => {
+    try {
+      await fetch(`/api/deliveries/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delivery_status: status })
+      });
+      fetchAllData();
+    } catch (err) {}
+  };
+
+  const handleUpdateFBStatus = async (id, status) => {
+    try {
+      await fetch(`/api/facebook-orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      fetchAllData();
+    } catch (err) {}
+  };
+
+  // Returns
+  const handleProcessReturn = async (e) => {
+    e.preventDefault();
+    if (!returnProductId || !returnQty || !returnRefundAmt) return alert('পণ্য, রিটার্ন সংখ্যা এবং রিফান্ড মূল্য দিন');
+
+    try {
+      const res = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          return_type: returnType,
+          reference_id: returnRefId || 'N/A',
+          product_id: Number(returnProductId),
+          quantity: Number(returnQty),
+          refund_amount: Number(returnRefundAmt),
+          reason: returnReason || 'Verified Return'
+        })
+      });
+
+      if (res.ok) {
+        alert('রিটার্ন সম্পন্ন এবং স্টক স্বয়ংক্রিয়ভাবে আপডেট হয়েছে');
+        setReturnRefId(''); setReturnQty(''); setReturnRefundAmt(''); setReturnReason('');
+        fetchAllData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Add Partner
+  const handleAddPartner = async (e) => {
+    e.preventDefault();
+    if (!partnerName.trim() || !partnerPhone.trim()) return alert('নাম এবং ফোন নম্বর দিন');
+
+    try {
+      if (partnerType === 'SUPPLIER') {
+        await fetch('/api/suppliers/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: partnerName, phone: partnerPhone, company: partnerCompany })
+        });
+      } else {
+        await fetch('/api/partners/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: partnerName,
+            company: partnerCompany,
+            phone: partnerPhone,
+            role: partnerType,
+            payout_method: 'bKash'
+          })
+        });
+      }
+      alert('সফলভাবে নিবন্ধিত হয়েছে!');
+      setPartnerName(''); setPartnerCompany(''); setPartnerPhone('');
+      fetchAllData();
+    } catch (err) {}
+  };
+
+  // Add Category
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (!newCatInput.trim()) return alert('ক্যাটাগরির নাম দিন');
+    try {
+      await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCatInput.trim() })
+      });
+      setCategories([...categories, newCatInput.trim()]);
+      setNewCatInput('');
+      alert('ক্যাটাগরি যুক্ত হয়েছে');
+    } catch (err) {}
+  };
+
+  // PDF Export
   const downloadInvoicePDF = () => {
     const input = invoicePdfRef.current;
     html2canvas(input, { scale: 2, backgroundColor: '#ffffff' }).then((canvas) => {
@@ -493,58 +498,56 @@ export default function App() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Invoice_${completedInvoice.invoice_id}.pdf`);
+      pdf.save(`Invoice_${completedInvoice.invoice_number}.pdf`);
     });
   };
 
-  const filteredCatalog = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchCat = selectedCategory === 'All' || p.category === selectedCategory;
-    return matchSearch && matchCat;
-  });
+  // Financial Ledger Computations
+  const totalReceivableFromDealers = dealers.reduce((acc, d) => acc + Number(d.current_due || 0), 0);
+  const totalCustomerDues = salesRecords.reduce((acc, s) => acc + Number(s.due_amount || 0), 0);
+  const totalIWillReceive = totalReceivableFromDealers + totalCustomerDues;
+
+  const totalPayableToSuppliers = suppliers.reduce((acc, s) => acc + Number(s.payable_due || 0), 0);
+  const totalPayableToResellers = resellers.reduce((acc, r) => acc + Number(r.pending_payout || 0), 0);
+  const totalIWillPay = totalPayableToSuppliers + totalPayableToResellers;
 
   return (
-    <div style={{ background: themeStyles.bg, color: themeStyles.textMain, minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', system-ui, -apple-system, sans-serif", transition: 'background 0.2s, color 0.2s' }}>
+    <div style={{ background: themeStyles.bg, color: themeStyles.textMain, minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
       
-      {/* NAVBAR */}
-      <header style={{ background: themeStyles.headerBg, borderBottom: `1px solid ${themeStyles.border}`, padding: '14px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      {/* HEADER */}
+      <header style={{ background: themeStyles.headerBg, borderBottom: `1px solid ${themeStyles.border}`, padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <div style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '0.8px', color: themeStyles.textMain }}>
-            MODX <span style={{ color: themeStyles.primary, fontSize: '11px', fontWeight: '700', border: `1px solid ${themeStyles.primary}`, padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>CORE ERP</span>
+          <div style={{ fontSize: '18px', fontWeight: '800', color: themeStyles.textMain }}>
+            MODX <span style={{ color: themeStyles.primary, fontSize: '11px', fontWeight: '700', border: `1px solid ${themeStyles.primary}`, padding: '2px 6px', borderRadius: '4px' }}>CORE ERP</span>
           </div>
-          <div style={{ fontSize: '11px', color: themeStyles.textMuted, fontWeight: '500', marginTop: '2px' }}>
-            Automotive Enterprise Resource Planning Terminal
-          </div>
+          <div style={{ fontSize: '11px', color: themeStyles.textMuted }}>বাইক পার্টস POS, ওয়ার্কশপ ও লজিস্টিক সিস্টেম</div>
         </div>
 
-        {/* Global Search */}
-        <div style={{ display: 'flex', gap: '6px', width: '360px' }}>
+        {/* Global Search Bar */}
+        <div style={{ display: 'flex', gap: '6px', width: '320px' }}>
           <input 
             type="text"
-            placeholder="Search phone or registration..."
+            placeholder="🔍 ফোন নম্বর বা বাইক নম্বর..."
             value={globalSearchInput}
             onChange={(e) => setGlobalSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleUniversalSearch()}
-            style={{ flex: 1, padding: '8px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }}
+            style={{ flex: 1, padding: '7px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }}
           />
-          <button 
-            onClick={handleUniversalSearch}
-            style={{ padding: '8px 16px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-          >
-            {isSearchingHistory ? '...' : 'Search'}
-          </button>
+          <button onClick={handleUniversalSearch} style={{ padding: '7px 12px', background: themeStyles.primary, border: 'none', color: '#fff', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>খুঁজুন</button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <nav style={{ display: 'flex', background: themeStyles.innerBg, padding: '4px', borderRadius: '8px', border: `1px solid ${themeStyles.border}`, gap: '3px', overflowX: 'auto' }}>
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <nav style={{ display: 'flex', background: themeStyles.innerBg, padding: '3px', borderRadius: '8px', border: `1px solid ${themeStyles.border}`, gap: '3px', overflowX: 'auto' }}>
             {[
-              { id: 'pos', label: 'Terminal' },
-              { id: 'returns', label: 'Returns Hub' },
-              { id: 'partners', label: 'Partners & B2B' },
-              { id: 'courier', label: 'Fulfillment' },
-              { id: 'fb_orders', label: `Messenger (${fbOrders.length})` },
-              { id: 'workshop', label: 'Job Cards' },
-              { id: 'inventory', label: 'Procurement' }
+              { id: 'pos', label: 'বিলিং কাউন্টার (POS)' },
+              { id: 'ledger', label: 'বকেয়া ও পাওনা খতিয়ান' },
+              { id: 'fb_orders', label: `মেসেঞ্জার অর্ডার (${fbOrders.length})` },
+              { id: 'courier', label: 'কুরিয়ার ডেলিভারি' },
+              { id: 'workshop', label: 'সার্ভিস সেন্টার / জব কার্ড' },
+              { id: 'inventory', label: 'স্টক ইনওয়ার্ড (Stock In)' },
+              { id: 'returns', label: 'রিটার্ন হাব (Returns)' },
+              { id: 'partners', label: 'পার্টনার ও ক্যাটাগরি' }
             ].map(t => (
               <button
                 key={t.id}
@@ -554,11 +557,10 @@ export default function App() {
                   borderRadius: '6px',
                   border: 'none',
                   fontSize: '11px',
-                  fontWeight: '600',
+                  fontWeight: '700',
                   cursor: 'pointer',
                   background: activeTab === t.id ? themeStyles.primary : 'transparent',
                   color: activeTab === t.id ? '#ffffff' : themeStyles.textMuted,
-                  transition: 'all 0.15s ease',
                   whiteSpace: 'nowrap'
                 }}
               >
@@ -569,410 +571,362 @@ export default function App() {
 
           <button
             onClick={toggleTheme}
-            style={{
-              padding: '7px 14px',
-              borderRadius: '6px',
-              background: themeStyles.innerBg,
-              border: `1px solid ${themeStyles.border}`,
-              color: themeStyles.textMain,
-              fontSize: '11px',
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              cursor: 'pointer'
-            }}
+            style={{ padding: '7px 12px', borderRadius: '6px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
           >
-            {isDark ? 'Light' : 'Dark'}
+            {isDark ? 'লাইট মোড' : 'ডার্ক মোড'}
           </button>
         </div>
       </header>
 
       {/* SEARCH REPORT MODAL */}
       {searchHistoryReport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '24px' }}>
-          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '10px', padding: '24px', maxWidth: '850px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '12px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: themeStyles.textMain }}>
-                Query Record: <span style={{ color: '#0ea5e9' }}>{searchHistoryReport.query}</span>
-              </div>
-              <button onClick={() => setSearchHistoryReport(null)} style={{ background: 'transparent', border: 'none', color: themeStyles.textMuted, fontSize: '16px', cursor: 'pointer' }}>Close</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '20px' }}>
+          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px', maxWidth: '800px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '10px', marginBottom: '14px' }}>
+              <div style={{ fontSize: '14px', fontWeight: '700' }}>হিস্ট্রি রেকর্ড: <span style={{ color: '#38bdf8' }}>{searchHistoryReport.query}</span></div>
+              <button onClick={() => setSearchHistoryReport(null)} style={{ background: 'transparent', border: 'none', color: themeStyles.textMuted, cursor: 'pointer' }}>বন্ধ করুন</button>
             </div>
-
-            <div style={{ marginBottom: '18px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMuted, marginBottom: '8px' }}>Invoices ({searchHistoryReport.invoices?.length || 0})</div>
+            <div style={{ fontSize: '12px' }}>
               {searchHistoryReport.invoices?.length > 0 ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                      <th style={{ padding: '8px' }}>Date</th>
-                      <th style={{ padding: '8px' }}>Invoice</th>
-                      <th style={{ padding: '8px' }}>Client</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {searchHistoryReport.invoices.map(inv => (
-                      <tr key={inv.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                        <td style={{ padding: '8px', color: themeStyles.textMuted }}>{new Date(inv.created_at).toLocaleDateString()}</td>
-                        <td style={{ padding: '8px', color: '#0ea5e9' }}>#{inv.invoice_number}</td>
-                        <td style={{ padding: '8px', color: themeStyles.textMain }}>{inv.customer_name} ({inv.bike_number})</td>
-                        <td style={{ padding: '8px', textAlign: 'right', color: '#10b981', fontWeight: '700' }}>Tk {inv.paid_amount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <div style={{ fontSize: '12px', color: themeStyles.textMuted }}>No matching logs.</div>}
+                searchHistoryReport.invoices.map(inv => (
+                  <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${themeStyles.border}` }}>
+                    <span>#{inv.invoice_number} | {inv.customer_name} ({inv.bike_number})</span>
+                    <strong style={{ color: '#10b981' }}>Tk {inv.paid_amount}</strong>
+                  </div>
+                ))
+              ) : <div>কোনো পূর্ববর্তী সেলস রেকর্ড পাওয়া যায়নি।</div>}
             </div>
-
-            <button onClick={() => setSearchHistoryReport(null)} style={{ width: '100%', padding: '10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Dismiss</button>
           </div>
         </div>
       )}
 
       {/* WORKSPACE CONTENT */}
-      <main style={{ padding: '24px 28px', maxWidth: '1600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+      <main style={{ padding: '20px 24px', maxWidth: '1600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
         
-        {/* TAB 1: TERMINAL / POS */}
+        {/* 1. POS BILLING TERMINAL */}
         {activeTab === 'pos' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 440px', gap: '24px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 480px', gap: '20px' }}>
             <div>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-                <input
-                  type="text"
-                  placeholder="Filter inventory by name, SKU or barcode..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ flex: 1, minWidth: '280px', padding: '10px 14px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }}
-                />
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {categories.map((cat) => (
-                    <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', border: '1px solid', borderColor: selectedCategory === cat ? themeStyles.primary : themeStyles.border, background: selectedCategory === cat ? themeStyles.primary : themeStyles.cardBg, color: selectedCategory === cat ? '#ffffff' : themeStyles.textMuted, cursor: 'pointer' }}>
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
-                {filteredCatalog.map((p) => {
-                  const isLow = p.stock <= p.min_stock;
-                  return (
-                    <div key={p.id} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderTop: isLow ? '2px solid #ef4444' : `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '140px' }}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '10px', color: themeStyles.textMuted, fontWeight: '700', letterSpacing: '0.5px' }}>{p.sku}</span>
-                          <span style={{ fontSize: '11px', color: isLow ? '#ef4444' : themeStyles.textMuted, fontWeight: '600' }}>Units: {p.stock}</span>
-                        </div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: themeStyles.textMain, lineHeight: '1.4' }}>{p.name}</div>
-                        <div style={{ fontSize: '11px', color: '#0ea5e9', marginTop: '4px' }}>Reseller Cost: Tk {p.reseller_base_price}</div>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${themeStyles.border}` }}>
-                        <div style={{ fontSize: '15px', fontWeight: '700', color: themeStyles.textMain }}>Tk {Number(p.selling_price).toLocaleString()}</div>
-                        <button onClick={() => addToCart(p)} style={{ padding: '6px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* BILLING TERMINAL */}
-            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', color: themeStyles.textMain }}>Terminal Register</span>
-                <div style={{ display: 'flex', background: themeStyles.innerBg, padding: '2px', borderRadius: '6px', border: `1px solid ${themeStyles.border}` }}>
-                  <button onClick={() => setOrderType('direct')} style={{ padding: '5px 12px', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', background: orderType === 'direct' ? themeStyles.primary : 'transparent', color: orderType === 'direct' ? '#fff' : themeStyles.textMuted }}>Direct</button>
-                  <button onClick={() => setOrderType('reseller')} style={{ padding: '5px 12px', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', background: orderType === 'reseller' ? '#2563eb' : 'transparent', color: orderType === 'reseller' ? '#fff' : themeStyles.textMuted }}>Affiliate</button>
-                </div>
-              </div>
-
-              {orderType === 'reseller' && (
-                <div style={{ background: themeStyles.innerBg, border: '1px solid #1e3a8a', padding: '12px', borderRadius: '6px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: '600', marginBottom: '6px' }}>Affiliate Partner</div>
-                  <select
-                    value={selectedResellerId}
-                    onChange={(e) => setSelectedResellerId(e.target.value)}
-                    style={{ width: '100%', padding: '8px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '4px', color: themeStyles.textMain, fontSize: '12px', marginBottom: '8px', outline: 'none' }}
-                  >
-                    {resellers.map(r => (
-                      <option key={r.id} value={r.id}>{r.name} - {r.company} ({r.phone})</option>
-                    ))}
-                  </select>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: themeStyles.textMuted }}>Commission:</span>
-                    <strong style={{ fontSize: '13px', color: '#10b981' }}>Tk {totalResellerProfit.toLocaleString()}</strong>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <input placeholder="Client Phone (Required)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ padding: '10px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }} />
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input placeholder="Client Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ flex: 1, padding: '10px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }} />
-                  <input placeholder="Vehicle Reg" value={bikeNumber} onChange={(e) => setBikeNumber(e.target.value)} style={{ flex: 1, padding: '10px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', color: themeStyles.textMain, fontSize: '12px', outline: 'none' }} />
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div style={{ borderTop: `1px solid ${themeStyles.border}`, borderBottom: `1px solid ${themeStyles.border}`, padding: '10px 0', minHeight: '140px', maxHeight: '180px', overflowY: 'auto', marginBottom: '16px' }}>
-                {cart.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '36px 0', color: themeStyles.textMuted, fontSize: '12px' }}>Cart Empty</div>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ color: themeStyles.textMuted, fontSize: '10px', textTransform: 'uppercase', textAlign: 'left' }}>
-                        <th>Item</th>
-                        <th style={{ textAlign: 'center' }}>Qty</th>
-                        <th style={{ textAlign: 'right' }}>Unit</th>
-                        <th style={{ textAlign: 'right' }}>Total</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cart.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                          <td style={{ padding: '8px 0', color: themeStyles.textMain }}>
-                            <div>{item.name}</div>
-                            {orderType === 'reseller' && <span style={{ fontSize: '10px', color: '#0ea5e9' }}>Rate: {item.reseller_base_price}</span>}
-                          </td>
-                          <td style={{ padding: '8px 0', textAlign: 'center' }}>
-                            <button onClick={() => updateQuantity(item.id, -1)} style={{ padding: '1px 6px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '3px' }}>-</button>
-                            <span style={{ padding: '0 6px', color: themeStyles.textMain }}>{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, 1)} style={{ padding: '1px 6px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '3px' }}>+</button>
-                          </td>
-                          <td style={{ padding: '8px 0', textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              value={item.customer_price}
-                              onChange={(e) => updateCustomerPrice(item.id, e.target.value)}
-                              style={{ width: '60px', padding: '3px 4px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#10b981', fontSize: '11px', textAlign: 'right', borderRadius: '3px', outline: 'none' }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: '600', color: themeStyles.textMain }}>Tk {item.subtotal}</td>
-                          <td style={{ padding: '8px 0 8px 6px', textAlign: 'right' }}>
-                            <button onClick={() => removeItem(item.id)} style={{ background: 'transparent', border: 'none', color: themeStyles.textMuted, cursor: 'pointer' }}>×</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              {/* Settlement Method Select */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', marginBottom: '14px' }}>
-                {['cash', 'bkash', 'nagad', 'rocket', 'bank'].map((m) => (
-                  <button key={m} type="button" onClick={() => setPaymentMethod(m)} style={{ padding: '7px 0', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', border: '1px solid', borderColor: paymentMethod === m ? themeStyles.primary : themeStyles.border, background: paymentMethod === m ? (isDark ? '#1e1017' : '#ffe4e6') : themeStyles.innerBg, color: paymentMethod === m ? themeStyles.primary : themeStyles.textMuted, cursor: 'pointer' }}>
-                    {m}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                {categories.map((cat) => (
+                  <button key={cat} onClick={() => setSelectedCategory(cat)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', border: '1px solid', borderColor: selectedCategory === cat ? themeStyles.primary : themeStyles.border, background: selectedCategory === cat ? themeStyles.primary : themeStyles.cardBg, color: selectedCategory === cat ? '#fff' : themeStyles.textMuted, cursor: 'pointer' }}>
+                    {cat}
                   </button>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: themeStyles.textMuted, marginBottom: '16px' }}>
-                <span style={{ fontSize: '13px' }}>Gross Total:</span>
-                <span style={{ fontSize: '18px', fontWeight: '800', color: themeStyles.textMain }}>Tk {finalPayable.toLocaleString()}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
+                {products.filter(p => selectedCategory === 'All' || p.category === selectedCategory).map((p) => (
+                  <div key={p.id} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '10px', color: themeStyles.textMuted }}>{p.sku} | স্টক: {p.stock}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: themeStyles.textMain, margin: '4px 0' }}>{p.name}</div>
+                      <div style={{ fontSize: '10px', color: '#0ea5e9' }}>রিসেলার রেট: Tk {p.reseller_base_price}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                      <strong style={{ color: themeStyles.textMain }}>Tk {p.selling_price}</strong>
+                      <button onClick={() => addToCart(p)} style={{ padding: '6px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', cursor: 'pointer', fontWeight: '700' }}>+ যোগ করুন</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* BILLING REGISTER */}
+            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '12px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase' }}>ক্যাশ মেমো ও বিলিং রেজিস্টার</span>
+                <div style={{ display: 'flex', background: themeStyles.innerBg, padding: '2px', borderRadius: '6px', border: `1px solid ${themeStyles.border}` }}>
+                  <button onClick={() => setOrderType('direct')} style={{ padding: '4px 10px', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', background: orderType === 'direct' ? themeStyles.primary : 'transparent', color: orderType === 'direct' ? '#fff' : themeStyles.textMuted }}>ডাইরেক্ট সেল</button>
+                  <button onClick={() => setOrderType('reseller')} style={{ padding: '4px 10px', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', background: orderType === 'reseller' ? '#2563eb' : 'transparent', color: orderType === 'reseller' ? '#fff' : themeStyles.textMuted }}>রিসেলার সেল</button>
+                </div>
               </div>
 
-              <button onClick={handleCheckout} disabled={loading} style={{ width: '100%', padding: '13px', background: themeStyles.primary, color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {loading ? 'Processing...' : 'Complete & Generate Invoice'}
+              {orderType === 'reseller' && (
+                <div style={{ background: themeStyles.innerBg, border: '1px solid #1e3a8a', padding: '10px', borderRadius: '6px', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: '700', marginBottom: '4px' }}>অর্ডারকারী রিসেলার নির্বাচন করুন:</div>
+                  <select
+                    value={selectedResellerId}
+                    onChange={(e) => setSelectedResellerId(e.target.value)}
+                    style={{ width: '100%', padding: '7px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', fontSize: '12px', outline: 'none', marginBottom: '6px' }}
+                  >
+                    {resellers.map(r => (
+                      <option key={r.id} value={r.id}>{r.name} - পেজ: {r.company} ({r.phone})</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: themeStyles.textMuted }}>রিসেলারের প্রফিট কমিশন:</span>
+                    <strong style={{ color: '#10b981' }}>+ Tk {resellerCommission.toLocaleString()}</strong>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                <input placeholder="কাস্টমারের মোবাইল নম্বর *" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input placeholder="কাস্টমারের নাম" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px' }} />
+                  <input placeholder="বাইক নম্বর" value={bikeNumber} onChange={(e) => setBikeNumber(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px' }} />
+                </div>
+              </div>
+
+              {/* Cart Items */}
+              <div style={{ minHeight: '110px', maxHeight: '150px', overflowY: 'auto', borderTop: `1px solid ${themeStyles.border}`, borderBottom: `1px solid ${themeStyles.border}`, padding: '8px 0', marginBottom: '12px' }}>
+                {cart.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: themeStyles.textMuted, fontSize: '12px' }}>কোনো পণ্য যোগ করা হয়নি</div>
+                ) : (
+                  cart.map(i => (
+                    <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '6px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div>{i.name}</div>
+                        {orderType === 'reseller' && <div style={{ fontSize: '10px', color: '#0ea5e9' }}>বেস: {i.reseller_base_price}</div>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '10px' }}>
+                        <button onClick={() => updateQuantity(i.id, -1)} style={{ padding: '1px 6px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain }}>-</button>
+                        <span>{i.quantity}</span>
+                        <button onClick={() => updateQuantity(i.id, 1)} style={{ padding: '1px 6px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain }}>+</button>
+                      </div>
+                      <input
+                        type="number"
+                        value={i.customer_price}
+                        onChange={(e) => updateCustomerPrice(i.id, e.target.value)}
+                        style={{ width: '55px', padding: '2px 4px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#10b981', textAlign: 'right', borderRadius: '3px', marginRight: '8px' }}
+                      />
+                      <strong style={{ minWidth: '60px', textAlign: 'right' }}>Tk {i.subtotal}</strong>
+                      <button onClick={() => removeItem(i.id)} style={{ background: 'transparent', border: 'none', color: themeStyles.textMuted, marginLeft: '6px', cursor: 'pointer' }}>×</button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Payment Selectors */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>পেমেন্ট মাধ্যম (Payment Methods):</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', marginBottom: '8px' }}>
+                  {['cash', 'bkash', 'nagad', 'rocket', 'bank'].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaymentMethod(m)}
+                      style={{
+                        padding: '6px 0',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        border: '1px solid',
+                        borderColor: paymentMethod === m ? themeStyles.primary : themeStyles.border,
+                        background: paymentMethod === m ? (isDark ? '#1e1017' : '#ffe4e6') : themeStyles.innerBg,
+                        color: paymentMethod === m ? themeStyles.primary : themeStyles.textMuted,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMethod === 'bank' && (
+                  <div style={{ background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', padding: '8px', marginBottom: '8px' }}>
+                    <select
+                      value={selectedBank}
+                      onChange={(e) => setSelectedBank(e.target.value)}
+                      style={{ width: '100%', padding: '7px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '4px', color: themeStyles.textMain, fontSize: '11px', outline: 'none', marginBottom: '6px' }}
+                    >
+                      {BD_BANK_LIST.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <input
+                      placeholder="কার্ড ট্রানজ্যাকশন আইডি / রেফারেন্স নম্বর"
+                      value={bankTxnRef}
+                      onChange={(e) => setBankTxnRef(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '4px', color: themeStyles.textMain, fontSize: '11px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Bill Totals & Due */}
+              <div style={{ background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', padding: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px' }}>
+                  <span>মোট বিল (Total Bill):</span>
+                  <strong style={{ fontSize: '15px' }}>Tk {totalBill.toLocaleString()}</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', color: '#10b981' }}>পরিশোধিত টাকা (Paid Amount):</span>
+                  <input
+                    type="number"
+                    placeholder={`Tk ${totalBill}`}
+                    value={paidAmountInput}
+                    onChange={(e) => setPaidAmountInput(e.target.value)}
+                    style={{ width: '90px', padding: '5px 8px', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, color: '#10b981', fontWeight: '700', textAlign: 'right', borderRadius: '4px', outline: 'none' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', paddingTop: '6px', borderTop: `1px solid ${themeStyles.border}` }}>
+                  <span style={{ color: currentDueAmount > 0 ? '#ef4444' : themeStyles.textMuted }}>বকেয়া (Due Amount):</span>
+                  <strong style={{ color: currentDueAmount > 0 ? '#ef4444' : themeStyles.textMuted }}>Tk {currentDueAmount.toLocaleString()}</strong>
+                </div>
+              </div>
+
+              <button
+                onClick={handleCheckout}
+                disabled={loading}
+                style={{ width: '100%', padding: '12px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                {loading ? 'প্রসেসিং হচ্ছে...' : (orderType === 'reseller' ? `${activeReseller?.company || 'রিসেলার'} এর নামে চালান তৈরি` : 'বিল সম্পন্ন ও প্রিন্ট')}
               </button>
             </div>
           </div>
         )}
 
-        {/* TAB 2: RETURNS HUB (SALE / PURCHASE RETURN) */}
-        {activeTab === 'returns' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '24px' }}>
-            <form onSubmit={handleProcessReturn} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Process Return & Stock Reconcile</div>
-              
-              <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Return Classification:</label>
-              <select value={returnType} onChange={(e) => setReturnType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', outline: 'none' }}>
-                <option value="SALE_RETURN">Sale Return (Customer returned - Stock Increase +)</option>
-                <option value="PURCHASE_RETURN">Purchase Return (Returned to Supplier - Stock Decrease -)</option>
-              </select>
-
-              <input placeholder="Invoice / Order Ref No." value={returnRefId} onChange={(e) => setReturnRefId(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box', outline: 'none' }} />
-
-              <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Select Product:</label>
-              <select value={returnProductId} onChange={(e) => setReturnProductId(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', outline: 'none' }}>
-                <option value="">Select an Item</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>)}
-              </select>
-
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                <input placeholder="Return Units *" type="number" value={returnQty} onChange={(e) => setReturnQty(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
-                <input placeholder="Refund Amount (Tk) *" type="number" value={returnRefundAmt} onChange={(e) => setReturnRefundAmt(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+        {/* 2. FINANCIAL AUDIT & DUE LEDGER */}
+        {activeTab === 'ledger' && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '16px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '11px', color: themeStyles.textMuted, textTransform: 'uppercase' }}>আমি মোট পাবো (Receivable)</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#10b981', marginTop: '4px' }}>Tk {totalIWillReceive.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', color: themeStyles.textMuted, marginTop: '2px' }}>ডিলার বকেয়া + কাস্টমার বাকি</div>
               </div>
 
-              <textarea placeholder="Reason for return..." value={returnReason} onChange={(e) => setReturnReason(e.target.value)} style={{ width: '100%', height: '65px', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '14px', boxSizing: 'border-box', outline: 'none', resize: 'none' }} />
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '16px', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontSize: '11px', color: themeStyles.textMuted, textTransform: 'uppercase' }}>আমার থেকে মোট পাবে (Payable)</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: '#ef4444', marginTop: '4px' }}>Tk {totalIWillPay.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', color: themeStyles.textMuted, marginTop: '2px' }}>মহাজন পাওনা + রিসেলার কমিশন</div>
+              </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Confirm Return & Adjust Stock</button>
-            </form>
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', color: themeStyles.textMuted, textTransform: 'uppercase' }}>ডিলারদের কাছে পাওনা</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: themeStyles.textMain, marginTop: '4px' }}>Tk {totalReceivableFromDealers.toLocaleString()}</div>
+              </div>
 
-            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Returns Audit History</div>
-              {returnsHistory.length > 0 ? (
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', color: themeStyles.textMuted, textTransform: 'uppercase' }}>সাপ্লায়ারদের পাওনা বকেয়া</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#f59e0b', marginTop: '4px' }}>Tk {totalPayableToSuppliers.toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '12px' }}>সাপ্লায়ার ও মহাজনদের পাওনা তালিকা</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                      <th style={{ padding: '8px' }}>Type</th>
-                      <th style={{ padding: '8px' }}>Ref</th>
-                      <th style={{ padding: '8px' }}>Product</th>
-                      <th style={{ padding: '8px' }}>Qty</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>Refund</th>
+                      <th style={{ padding: '8px' }}>সাপ্লায়ারের নাম</th>
+                      <th style={{ padding: '8px' }}>মোবাইল</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>আমাদের দেনা (Due)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {returnsHistory.map(r => (
-                      <tr key={r.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                        <td style={{ padding: '8px' }}><span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '3px', fontWeight: '700', background: r.return_type === 'SALE_RETURN' ? '#065f46' : '#991b1b', color: '#fff' }}>{r.return_type}</span></td>
-                        <td style={{ padding: '8px', color: '#0ea5e9' }}>{r.reference_id}</td>
-                        <td style={{ padding: '8px', color: themeStyles.textMain }}>{r.product_name}</td>
-                        <td style={{ padding: '8px' }}>{r.quantity}</td>
-                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>Tk {r.refund_amount}</td>
+                    {suppliers.map(s => (
+                      <tr key={s.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                        <td style={{ padding: '8px' }}><strong>{s.name}</strong> ({s.company})</td>
+                        <td style={{ padding: '8px' }}>{s.phone}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>Tk {s.payable_due?.toLocaleString() || 0}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <div style={{ fontSize: '12px', color: themeStyles.textMuted, textAlign: 'center', padding: '30px 0' }}>No return records tracked yet.</div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* TAB 3: PARTNERS, CATEGORIES & ENTITIES */}
-        {activeTab === 'partners' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px' }}>
-            <div>
-              {/* Partner Add Form */}
-              <form onSubmit={handleAddPartner} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '12px' }}>Register Partner / Entity</div>
-                
-                <select value={partnerType} onChange={(e) => setPartnerType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', outline: 'none' }}>
-                  <option value="RESELLER">Affiliate Reseller</option>
-                  <option value="DEALER">B2B Dealer</option>
-                  <option value="SUPPLIER">Distributor / Supplier</option>
-                </select>
-
-                <input placeholder="Name / Contact Person *" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-                <input placeholder="Company / Page Name" value={partnerCompany} onChange={(e) => setPartnerCompany(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-                <input placeholder="Phone Number *" value={partnerPhone} onChange={(e) => setPartnerPhone(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-                
-                {partnerType !== 'SUPPLIER' && (
-                  <input placeholder="Payout Channel / Account (e.g. bKash 017...)" value={payoutAccount} onChange={(e) => setPayoutAccount(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '14px', boxSizing: 'border-box', outline: 'none' }} />
-                )}
-
-                <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Save Entity</button>
-              </form>
-
-              {/* Add Category Form */}
-              <form onSubmit={handleAddCategory} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '12px' }}>Create Category</div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input placeholder="Category name..." value={newCatInput} onChange={(e) => setNewCatInput(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
-                  <button type="submit" style={{ padding: '9px 16px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>Add</button>
-                </div>
-              </form>
-            </div>
-
-            {/* Entity List */}
-            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Registered Network Ledger</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Entity</th>
-                    <th style={{ padding: '8px' }}>Role</th>
-                    <th style={{ padding: '8px' }}>Phone</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Receivable / Due</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...dealers, ...resellers, ...suppliers.map(s => ({ ...s, role: 'SUPPLIER', current_due: 0 }))].map((p, idx) => (
-                    <tr key={idx} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                      <td style={{ padding: '8px' }}><strong>{p.name}</strong> <span style={{ color: themeStyles.textMuted }}>({p.company})</span></td>
-                      <td style={{ padding: '8px' }}><span style={{ fontSize: '10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, padding: '2px 6px', borderRadius: '3px', fontWeight: '700' }}>{p.role || 'PARTNER'}</span></td>
-                      <td style={{ padding: '8px' }}>{p.phone}</td>
-                      <td style={{ padding: '8px', textAlign: 'right', color: '#10b981', fontWeight: '700' }}>Tk {p.current_due || p.pending_payout || 0}</td>
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '12px' }}>রিসেলার প্রফিট কমিশন বকেয়া</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>রিসেলার ও পেজ</th>
+                      <th style={{ padding: '8px' }}>মোবাইল</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>প্রদেয় কমিশন (Due)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {resellers.map(r => (
+                      <tr key={r.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                        <td style={{ padding: '8px' }}><strong>{r.name}</strong> ({r.company})</td>
+                        <td style={{ padding: '8px' }}>{r.phone}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#f59e0b' }}>Tk {r.pending_payout?.toLocaleString() || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '12px' }}>B2B ডিলারদের কাছে বাকি</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>ডিলারের নাম</th>
+                      <th style={{ padding: '8px' }}>মোবাইল</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>আমাদের পাওনা (Due)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dealers.map(d => (
+                      <tr key={d.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                        <td style={{ padding: '8px' }}><strong>{d.name}</strong> ({d.company})</td>
+                        <td style={{ padding: '8px' }}>{d.phone}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>Tk {d.current_due?.toLocaleString() || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '12px' }}>কাস্টমার বাকি মেমো তালিকা</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>মেমো</th>
+                      <th style={{ padding: '8px' }}>ক্রেতা ও বাইক</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>বকেয়া টাকা</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesRecords.filter(s => s.due_amount > 0).map(s => (
+                      <tr key={s.id || s.invoice_number} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                        <td style={{ padding: '8px', color: '#0ea5e9' }}>#{s.invoice_number}</td>
+                        <td style={{ padding: '8px' }}>{s.customer_name} ({s.bike_number})</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>Tk {s.due_amount?.toLocaleString() || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: COURIER FULFILLMENT & REAL-TIME STATUS */}
-        {activeTab === 'courier' && (
-          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Courier Consignment & Live Status Reconcile</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                  <th style={{ padding: '10px' }}>Consignment</th>
-                  <th style={{ padding: '10px' }}>Consignee</th>
-                  <th style={{ padding: '10px' }}>COD</th>
-                  <th style={{ padding: '10px' }}>Update Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deliveries.map(d => (
-                  <tr key={d.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '2px 6px', borderRadius: '3px', fontWeight: '700' }}>{d.courier_name}</span>
-                      <div style={{ fontWeight: '700', marginTop: '4px' }}>{d.tracking_code}</div>
-                    </td>
-                    <td style={{ padding: '10px' }}>{d.recipient_name} ({d.recipient_phone})</td>
-                    <td style={{ padding: '10px', fontWeight: '700', color: '#10b981' }}>Tk {d.cod_amount}</td>
-                    <td style={{ padding: '10px' }}>
-                      <select
-                        value={d.delivery_status}
-                        onChange={(e) => handleUpdateCourierStatus(d.id, e.target.value)}
-                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', outline: 'none' }}
-                      >
-                        <option value="In Transit">In Transit</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Returned">Returned</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 5: MESSENGER CHATBOT ORDERS & STATUS UPDATE */}
+        {/* 3. MESSENGER ORDERS */}
         {activeTab === 'fb_orders' && (
           <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain }}>Messenger Dispatch Orders & Verification</div>
-              <button onClick={fetchAllData} style={{ padding: '6px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>Sync Orders</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase' }}>ফেসবুক চ্যাটবট থেকে আসা কাস্টমার অর্ডার</div>
+              <button onClick={fetchAllData} style={{ padding: '6px 14px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: '#0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>অর্ডার সিঙ্ক করুন</button>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                  <th style={{ padding: '10px' }}>ID</th>
-                  <th style={{ padding: '10px' }}>Client</th>
-                  <th style={{ padding: '10px' }}>SKU Order</th>
-                  <th style={{ padding: '10px' }}>Consignee Address</th>
-                  <th style={{ padding: '10px' }}>Update Status</th>
+                  <th style={{ padding: '10px' }}>আইডি</th>
+                  <th style={{ padding: '10px' }}>কাস্টমার</th>
+                  <th style={{ padding: '10px' }}>অর্ডার পণ্য</th>
+                  <th style={{ padding: '10px' }}>ঠিকানা</th>
+                  <th style={{ padding: '10px' }}>স্ট্যাটাস পরিবর্তন</th>
                 </tr>
               </thead>
               <tbody>
                 {fbOrders.map(o => (
                   <tr key={o.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
-                    <td style={{ padding: '10px', color: themeStyles.textMuted }}>#{o.id}</td>
-                    <td style={{ padding: '10px', color: themeStyles.textMain, fontWeight: '600' }}>{o.customer_name} ({o.customer_phone})</td>
+                    <td style={{ padding: '10px' }}>#{o.id}</td>
+                    <td style={{ padding: '10px', fontWeight: '700' }}>{o.customer_name} ({o.customer_phone})</td>
                     <td style={{ padding: '10px', color: '#0ea5e9' }}>{o.items_ordered}</td>
                     <td style={{ padding: '10px', color: themeStyles.textMuted }}>{o.delivery_address}</td>
                     <td style={{ padding: '10px' }}>
                       <select
                         value={o.order_status}
                         onChange={(e) => handleUpdateFBStatus(o.id, e.target.value)}
-                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px', outline: 'none' }}
+                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px' }}
                       >
                         <option value="Pending Review">Pending Review</option>
                         <option value="Approved">Approved</option>
@@ -987,26 +941,67 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 6: WORKSHOP KANBAN */}
+        {/* 4. COURIER FULFILLMENT */}
+        {activeTab === 'courier' && (
+          <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '14px' }}>কুরিয়ার বুকিং ও ডেলিভারি স্ট্যাটাস ট্র্যাকিং</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                  <th style={{ padding: '10px' }}>কুরিয়ার ও কোড</th>
+                  <th style={{ padding: '10px' }}>প্রাপক</th>
+                  <th style={{ padding: '10px' }}>COD পরিমাণ</th>
+                  <th style={{ padding: '10px' }}>ডেলিভারি স্ট্যাটাস পরিবর্তন</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deliveries.map(d => (
+                  <tr key={d.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '2px 6px', borderRadius: '3px' }}>{d.courier_name}</span>
+                      <div style={{ fontWeight: '700', marginTop: '4px' }}>{d.tracking_code}</div>
+                    </td>
+                    <td style={{ padding: '10px' }}>{d.recipient_name} ({d.recipient_phone})</td>
+                    <td style={{ padding: '10px', fontWeight: '700', color: '#10b981' }}>Tk {d.cod_amount}</td>
+                    <td style={{ padding: '10px' }}>
+                      <select
+                        value={d.delivery_status}
+                        onChange={(e) => handleUpdateCourierStatus(d.id, e.target.value)}
+                        style={{ padding: '6px 10px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '4px' }}
+                      >
+                        <option value="In Transit">In Transit</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Returned">Returned</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 5. SERVICE CENTER & JOB CARDS */}
         {activeTab === 'workshop' && (
           <div>
             <form onSubmit={addJobCard} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '16px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 2fr 1.2fr auto', gap: '10px' }}>
-              <input placeholder="Registration No." value={newJobBike} onChange={(e) => setNewJobBike(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-              <input placeholder="Client Identity" value={newJobCustomer} onChange={(e) => setNewJobCustomer(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-              <input placeholder="Job Specification" value={newJobService} onChange={(e) => setNewJobService(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-              <input placeholder="Technician" value={newJobMechanic} onChange={(e) => setNewJobMechanic(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
-              <button type="submit" style={{ padding: '9px 18px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>Open Card</button>
+              <input placeholder="রেজিস্ট্রেশন নম্বর *" value={newJobBike} onChange={(e) => setNewJobBike(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px' }} />
+              <input placeholder="কাস্টমারের নাম" value={newJobCustomer} onChange={(e) => setNewJobCustomer(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px' }} />
+              <input placeholder="সার্ভিসের বিবরণ *" value={newJobService} onChange={(e) => setNewJobService(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px' }} />
+              <input placeholder="টেকনিশিয়ান" value={newJobMechanic} onChange={(e) => setNewJobMechanic(e.target.value)} style={{ padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', fontSize: '12px' }} />
+              <button type="submit" style={{ padding: '9px 18px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}>জব কার্ড খুলুন</button>
             </form>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               {['Queued', 'In Progress', 'Washing & Final QC', 'Ready'].map((col) => (
                 <div key={col} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', minHeight: '440px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: themeStyles.textMain, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '10px', marginBottom: '12px' }}>{col}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: themeStyles.textMain, textTransform: 'uppercase', borderBottom: `1px solid ${themeStyles.border}`, paddingBottom: '10px', marginBottom: '12px' }}>{col}</div>
                   {jobCards.filter((j) => j.status === col).map((job) => (
                     <div key={job.id} style={{ background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, borderRadius: '6px', padding: '12px', marginBottom: '10px' }}>
                       <div style={{ color: themeStyles.primary, fontWeight: '700', fontSize: '12px' }}>{job.bike_number}</div>
                       <div style={{ fontSize: '13px', color: themeStyles.textMain, margin: '6px 0' }}>{job.service_type}</div>
-                      <div style={{ fontSize: '11px', color: themeStyles.textMuted, marginBottom: '10px' }}>Tech: {job.mechanic_name}</div>
+                      <div style={{ fontSize: '11px', color: themeStyles.textMuted, marginBottom: '10px' }}>টেকনিশিয়ান: {job.mechanic_name}</div>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         {['Queued', 'In Progress', 'Washing & Final QC', 'Ready'].map((st) => st !== job.status && (
                           <button key={st} onClick={() => updateJobStatus(job.id, st)} style={{ flex: 1, padding: '3px 0', background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMuted, fontSize: '10px', cursor: 'pointer', borderRadius: '3px' }}>{st.slice(0, 4)}</button>
@@ -1020,57 +1015,206 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 7: PROCUREMENT & STOCK INWARD */}
+        {/* 6. STOCK INWARD */}
         {activeTab === 'inventory' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '20px' }}>
             <form onSubmit={handleAddProduct} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Inward Consignment</div>
-              <input placeholder="Item Description *" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-              
+              <div style={{ fontSize: '13px', fontWeight: '800', color: themeStyles.textMain, marginBottom: '14px', textTransform: 'uppercase' }}>
+                নতুন স্টক ইনওয়ার্ড (পণ্য ক্রয় ও এন্ট্রি)
+              </div>
+
               <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Category:</label>
-                <select value={newProdCategory} onChange={(e) => setNewProdCategory(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>পণ্যের নাম (Product Name) *</label>
+                <input
+                  placeholder="যেমন: Hell hosepipe, Mobil 1L ইত্যাদি"
+                  value={newProdName}
+                  onChange={(e) => setNewProdName(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>ক্যাটাগরি (Category)</label>
+                <select
+                  value={newProdCategory}
+                  onChange={(e) => setNewProdCategory(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}
+                >
                   {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                <input placeholder="Inward Cost" type="number" value={newProdCost} onChange={(e) => setNewProdCost(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
-                <input placeholder="Affiliate Rate" type="number" value={newProdResellerRate} onChange={(e) => setNewProdResellerRate(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
-                <input placeholder="MSRP" type="number" value={newProdPrice} onChange={(e) => setNewProdPrice(e.target.value)} style={{ flex: 1, padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>কেনা দাম (Cost Tk) *</label>
+                  <input
+                    type="number"
+                    placeholder="যেমন: 3800"
+                    value={newProdCost}
+                    onChange={(e) => setNewProdCost(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>বিক্রয় দর (Selling Tk) *</label>
+                  <input
+                    type="number"
+                    placeholder="যেমন: 4200"
+                    value={newProdPrice}
+                    onChange={(e) => setNewProdPrice(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                </div>
               </div>
 
-              <input placeholder="Total Units *" type="number" value={newProdStock} onChange={(e) => setNewProdStock(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box', outline: 'none' }} />
-              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>রিসেলার রেট (Reseller Tk)</label>
+                  <input
+                    type="number"
+                    placeholder="যেমন: 4000"
+                    value={newProdResellerRate}
+                    onChange={(e) => setNewProdResellerRate(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>পরিমাণ (Quantity) *</label>
+                  <input
+                    type="number"
+                    placeholder="যেমন: 50"
+                    value={newProdStock}
+                    onChange={(e) => setNewProdStock(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                </div>
+              </div>
+
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>Supplier:</label>
-                <select value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}>
+                <label style={{ fontSize: '11px', color: themeStyles.textMuted, display: 'block', marginBottom: '4px' }}>মহাজন / সাপ্লায়ার (Supplier)</label>
+                <select
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', outline: 'none' }}
+                >
                   <option value="Direct Wholesale">Direct Wholesale</option>
                   {suppliers.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company || s.phone})</option>)}
                 </select>
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', textTransform: 'uppercase' }}>Log to Stock</button>
+              <button
+                type="submit"
+                style={{ width: '100%', padding: '12px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', fontSize: '12px' }}
+              >
+                স্টকে যুক্ত ও সংরক্ষণ করুন
+              </button>
             </form>
 
             <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: themeStyles.textMain, marginBottom: '14px' }}>Procurement Sourcing Ledger</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '14px' }}>ক্রয় খতিয়ান (Procurement Ledger)</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Date</th>
-                    <th style={{ padding: '8px' }}>Distributor</th>
-                    <th style={{ padding: '8px' }}>Qty</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Expenditure</th>
+                    <th style={{ padding: '8px' }}>তারিখ</th>
+                    <th style={{ padding: '8px' }}>পণ্য</th>
+                    <th style={{ padding: '8px' }}>সাপ্লায়ার</th>
+                    <th style={{ padding: '8px' }}>পরিমাণ</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>মোট কেনা খরচ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {purchaseLedger.map(p => (
                     <tr key={p.id} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
                       <td style={{ padding: '8px', color: themeStyles.textMuted }}>{p.created_at}</td>
-                      <td style={{ padding: '8px', color: themeStyles.textMain }}>{p.supplier_name}</td>
-                      <td style={{ padding: '8px' }}>{p.quantity}</td>
+                      <td style={{ padding: '8px', fontWeight: '600' }}>{p.product_name}</td>
+                      <td style={{ padding: '8px', color: themeStyles.textMuted }}>{p.supplier_name}</td>
+                      <td style={{ padding: '8px' }}>{p.quantity} Pcs</td>
                       <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#f59e0b' }}>Tk {Number(p.total_cost).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 7. RETURNS HUB */}
+        {activeTab === 'returns' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '20px' }}>
+            <form onSubmit={handleProcessReturn} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '14px' }}>পণ্য রিটার্ন ও স্টক সমন্বয় (Returns Hub)</div>
+
+              <label style={{ fontSize: '11px', color: themeStyles.textMuted }}>রিটার্নের ধরণ:</label>
+              <select value={returnType} onChange={(e) => setReturnType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px' }}>
+                <option value="SALE_RETURN">কাস্টমার রিটার্ন (দোকানে স্টক বাড়বে +)</option>
+                <option value="PURCHASE_RETURN">মহাজনকে মাল ফেরত (দোকানের স্টক কমবে -)</option>
+              </select>
+
+              <label style={{ fontSize: '11px', color: themeStyles.textMuted }}>পণ্য নির্বাচন করুন:</label>
+              <select value={returnProductId} onChange={(e) => setReturnProductId(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px' }}>
+                <option value="">আইটেম সিলেক্ট করুন</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} (বর্তমান স্টক: {p.stock})</option>)}
+              </select>
+
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <input placeholder="রিটার্ন পরিমাণ *" type="number" value={returnQty} onChange={(e) => setReturnQty(e.target.value)} style={{ flex: 1, padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px' }} />
+                <input placeholder="টাকা রিফান্ড (Tk) *" type="number" value={returnRefundAmt} onChange={(e) => setReturnRefundAmt(e.target.value)} style={{ flex: 1, padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px' }} />
+              </div>
+
+              <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>রিটার্ন কনফার্ম করুন</button>
+            </form>
+
+            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '14px' }}>রিটার্ন হিস্ট্রি লগ</div>
+              <p style={{ fontSize: '12px', color: themeStyles.textMuted }}>প্রতিটি রিটার্ন নিশ্চিত করার সাথে সাথে মালের স্টক স্বয়ংক্রিয়ভাবে ডাটাবেজে সমন্বয় হয়ে যায়।</p>
+            </div>
+          </div>
+        )}
+
+        {/* 8. PARTNERS & CATEGORIES */}
+        {activeTab === 'partners' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '20px' }}>
+            <div>
+              <form onSubmit={handleAddPartner} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '12px' }}>নতুন পার্টনার / সাপ্লায়ার নিবন্ধন</div>
+                <select value={partnerType} onChange={(e) => setPartnerType(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px' }}>
+                  <option value="RESELLER">অ্যাফিলিয়েট রিসেলার (Reseller)</option>
+                  <option value="DEALER">B2B ডিলার (B2B Dealer)</option>
+                  <option value="SUPPLIER">মহাজন / সাপ্লায়ার (Supplier)</option>
+                </select>
+                <input placeholder="নাম / ব্যক্তি *" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box' }} />
+                <input placeholder="প্রতিষ্ঠান / পেজের নাম" value={partnerCompany} onChange={(e) => setPartnerCompany(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '10px', boxSizing: 'border-box' }} />
+                <input placeholder="মোবাইল নম্বর *" value={partnerPhone} onChange={(e) => setPartnerPhone(e.target.value)} style={{ width: '100%', padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px', marginBottom: '12px', boxSizing: 'border-box' }} />
+                <button type="submit" style={{ width: '100%', padding: '11px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>পার্টনার সেভ করুন</button>
+              </form>
+
+              <form onSubmit={handleAddCategory} style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '10px' }}>নতুন ক্যাটাগরি তৈরি</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input placeholder="ক্যাটাগরির নাম..." value={newCatInput} onChange={(e) => setNewCatInput(e.target.value)} style={{ flex: 1, padding: '9px', background: themeStyles.innerBg, border: `1px solid ${themeStyles.border}`, color: themeStyles.textMain, borderRadius: '6px' }} />
+                  <button type="submit" style={{ padding: '9px 14px', background: themeStyles.primary, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>যুক্ত</button>
+                </div>
+              </form>
+            </div>
+
+            <div style={{ background: themeStyles.cardBg, border: `1px solid ${themeStyles.border}`, borderRadius: '8px', padding: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '14px' }}>পার্টনার ও ডিলারদের তালিকা</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: themeStyles.innerBg, color: themeStyles.textMuted, textAlign: 'left' }}>
+                    <th style={{ padding: '8px' }}>পার্টনার</th>
+                    <th style={{ padding: '8px' }}>রোল</th>
+                    <th style={{ padding: '8px' }}>মোবাইল</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>বর্তমান পাওনা/বকেয়া</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dealers, ...resellers, ...suppliers.map(s => ({ ...s, role: 'SUPPLIER', current_due: s.payable_due || 0 }))].map((p, idx) => (
+                    <tr key={idx} style={{ borderBottom: `1px solid ${themeStyles.border}` }}>
+                      <td style={{ padding: '8px' }}><strong>{p.name}</strong> ({p.company})</td>
+                      <td style={{ padding: '8px' }}>{p.role}</td>
+                      <td style={{ padding: '8px' }}>{p.phone}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#10b981', fontWeight: '700' }}>Tk {p.current_due || p.pending_payout || 0}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1083,34 +1227,73 @@ export default function App() {
 
       {/* PRINTABLE INVOICE MODAL */}
       {completedInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1300, padding: '24px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1300, padding: '20px' }}>
           <div style={{ background: '#ffffff', borderRadius: '8px', padding: '24px', maxWidth: '480px', width: '100%', color: '#0f172a' }}>
             <div ref={invoicePdfRef} style={{ padding: '12px', background: '#fff' }}>
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', marginBottom: '14px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '0.5px' }}>MODX ENTERPRISE</h2>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>Invoice #{completedInvoice.invoice_id} | {completedInvoice.date}</div>
+              <div style={{ textAlign: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>
+                  {completedInvoice.order_type === 'reseller' && completedInvoice.reseller_info ? completedInvoice.reseller_info.company : 'MODX BIKE MART'}
+                </h2>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  {completedInvoice.order_type === 'reseller' ? `Fulfilled by ModX | Partner: ${completedInvoice.reseller_info?.name}` : 'Official POS Sales Receipt'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b' }}>ইনভয়েস #{completedInvoice.invoice_number} | {completedInvoice.date}</div>
               </div>
-              <div style={{ fontSize: '12px', marginBottom: '14px', lineHeight: '1.6' }}>
-                <div><strong>Client:</strong> {completedInvoice.customer_name} ({completedInvoice.customer_phone})</div>
-                <div><strong>Vehicle:</strong> {completedInvoice.bike_number}</div>
-                <div><strong>Payment:</strong> {completedInvoice.payment_method}</div>
+
+              <div style={{ fontSize: '12px', marginBottom: '10px', lineHeight: '1.5' }}>
+                <div><strong>কাস্টমার:</strong> {completedInvoice.customer_name} ({completedInvoice.customer_phone})</div>
+                <div><strong>বাইক নম্বর:</strong> {completedInvoice.bike_number}</div>
+                <div><strong>পেমেন্ট মেথড:</strong> {completedInvoice.payment_method}</div>
               </div>
-              <div style={{ borderTop: '2px solid #0f172a', paddingTop: '10px', fontSize: '14px', display: 'flex', justifyContent: 'space-between', fontWeight: '800' }}>
-                <span>Payable:</span>
-                <span>Tk {completedInvoice.paid_amount.toLocaleString()}</span>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '10px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #cbd5e1', textAlign: 'left', color: '#475569' }}>
+                    <th style={{ padding: '4px 0' }}>আইটেম</th>
+                    <th style={{ padding: '4px 0', textAlign: 'center' }}>পরিমাণ</th>
+                    <th style={{ padding: '4px 0', textAlign: 'right' }}>মোট</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completedInvoice.items.map((i, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px dashed #e2e8f0' }}>
+                      <td style={{ padding: '4px 0' }}>{i.name}</td>
+                      <td style={{ padding: '4px 0', textAlign: 'center' }}>{i.quantity}</td>
+                      <td style={{ padding: '4px 0', textAlign: 'right' }}>Tk {i.subtotal}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ borderTop: '2px solid #0f172a', paddingTop: '8px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span>সর্বমোট বিল:</span>
+                  <strong>Tk {completedInvoice.total_amount.toLocaleString()}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', color: '#16a34a' }}>
+                  <span>পরিশোধিত টাকা:</span>
+                  <strong>Tk {completedInvoice.paid_amount.toLocaleString()}</strong>
+                </div>
+                {completedInvoice.due_amount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: '800' }}>
+                    <span>বকেয়া (Due):</span>
+                    <span>Tk {completedInvoice.due_amount.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button onClick={downloadInvoicePDF} style={{ flex: 1, padding: '11px', background: '#e11d48', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>Export PDF</button>
-              <button onClick={() => setCompletedInvoice(null)} style={{ padding: '11px 20px', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Close</button>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button onClick={downloadInvoicePDF} style={{ flex: 1, padding: '10px', background: '#e11d48', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}>PDF সেভ করুন</button>
+              <button onClick={() => setCompletedInvoice(null)} style={{ padding: '10px 16px', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>বন্ধ করুন</button>
             </div>
           </div>
         </div>
       )}
 
       {/* FOOTER */}
-      <footer style={{ background: themeStyles.innerBg, borderTop: `1px solid ${themeStyles.border}`, padding: '14px 28px', textAlign: 'center', fontSize: '11px', color: themeStyles.textMuted }}>
-        ModX Engineering Framework & Terminal Interface.
+      <footer style={{ background: themeStyles.innerBg, borderTop: `1px solid ${themeStyles.border}`, padding: '12px 24px', textAlign: 'center', fontSize: '11px', color: themeStyles.textMuted }}>
+        ModX Core ERP — সম্পূর্ণ অটোমেটেড ক্যাশ কাউন্টার, লজিস্টিক ও সার্ভিস সেন্টার
       </footer>
     </div>
   );
