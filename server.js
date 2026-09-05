@@ -412,7 +412,6 @@ app.post('/webhook', async (req, res) => {
         try {
           let productListContext = "আমাদের দোকানে বর্তমানে কোনো পণ্য তালিকাভুক্ত নেই।";
           if (pool) {
-            // এখানে category কলামটি বাদ দেওয়া হয়েছে যাতে কোনো এরর না আসে
             const prodRes = await pool.query('SELECT name, selling_price, stock FROM products');
             if (prodRes.rows.length > 0) {
               productListContext = prodRes.rows.map(p => 
@@ -421,22 +420,22 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          // জেমিনি মডেল কনফিগারেশন
-          const model = genAI.getGenerativeModel({ 
-            model: 'gemini-1.5-flash',
-            systemInstruction: `
-              তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
-              তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
-              আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
-              ${productListContext}
+          // সম্পূর্ণ প্রম্পট ও নির্দেশিকা একসাথে যুক্ত করা হলো যাতে কোনো কনফিগারেশন এরর না করে
+          const fullPrompt = `
+            তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
+            তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
+            আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
+            ${productListContext}
 
-              নিয়মাবলী:
-              - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
-              - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
-            `
-          });
+            নিয়মাবলী:
+            - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
+            - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
 
-          const result = await model.generateContent(userMsg);
+            কাস্টমারের মেসেজ: "${userMsg}"
+          `;
+
+          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const result = await model.generateContent(fullPrompt);
           const response = await result.response;
           const botReply = response.text() || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
           
