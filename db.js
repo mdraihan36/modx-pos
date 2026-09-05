@@ -25,7 +25,6 @@ const initDB = async () => {
     client = await pool.connect();
     console.log(' Connected to PostgreSQL Database');
 
-    // ১. ব্রাঞ্চ টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS branches (
         id SERIAL PRIMARY KEY,
@@ -33,7 +32,6 @@ const initDB = async () => {
       );
     `);
 
-    // ২. ইউজার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -45,7 +43,6 @@ const initDB = async () => {
       );
     `);
 
-    // ৩. কাস্টমার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
@@ -55,7 +52,6 @@ const initDB = async () => {
       );
     `);
 
-    // ৪. সাপ্লায়ার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS suppliers (
         id SERIAL PRIMARY KEY,
@@ -66,12 +62,12 @@ const initDB = async () => {
       );
     `);
 
-    // ৫. প্রোডাক্ট ক্যাটালগ টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         name VARCHAR(150) NOT NULL,
-        barcode VARCHAR(100),
+        sku VARCHAR(100),
+        category VARCHAR(100) DEFAULT 'Lubricants',
         cost_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
         reseller_base_price NUMERIC(10, 2) DEFAULT 0,
         selling_price NUMERIC(10, 2) NOT NULL DEFAULT 0,
@@ -81,12 +77,13 @@ const initDB = async () => {
       );
     `);
 
-    // ৬. পারচেস হিস্ট্রি টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS purchases (
         id SERIAL PRIMARY KEY,
         product_id INT REFERENCES products(id) ON DELETE CASCADE,
         supplier_id INT REFERENCES suppliers(id) ON DELETE SET NULL,
+        supplier_name VARCHAR(150),
+        supplier_phone VARCHAR(50),
         quantity INT NOT NULL,
         purchase_price NUMERIC(10, 2) NOT NULL,
         total_cost NUMERIC(10, 2) NOT NULL,
@@ -94,7 +91,6 @@ const initDB = async () => {
       );
     `);
 
-    // ৭. খরচ (Expenses) টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
@@ -105,7 +101,6 @@ const initDB = async () => {
       );
     `);
 
-    // ৮. জব কার্ড (বাইক সার্ভিসিং) টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS job_cards (
         id SERIAL PRIMARY KEY,
@@ -115,51 +110,28 @@ const initDB = async () => {
         service_type VARCHAR(100),
         mechanic_name VARCHAR(100),
         status VARCHAR(50) DEFAULT 'Queued',
-        notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // ৯. ইনভয়েস টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS invoices (
         id SERIAL PRIMARY KEY,
+        invoice_number VARCHAR(50),
+        order_type VARCHAR(50) DEFAULT 'direct',
         customer_name VARCHAR(100),
         customer_phone VARCHAR(20),
         bike_number VARCHAR(50),
         total_amount NUMERIC(10, 2) NOT NULL,
         paid_amount NUMERIC(10, 2) NOT NULL,
+        total_cogs NUMERIC(10, 2) DEFAULT 0,
+        profit NUMERIC(10, 2) DEFAULT 0,
+        payment_method VARCHAR(100),
+        items_json JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // ১০. ইনভয়েস আইটেমস টেবিল
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS invoice_items (
-        id SERIAL PRIMARY KEY,
-        invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
-        item_type VARCHAR(50),
-        item_name VARCHAR(150),
-        quantity INT,
-        unit_price NUMERIC(10, 2),
-        subtotal NUMERIC(10, 2)
-      );
-    `);
-
-    // ১১. পেমেন্টস টেবিল
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS payments (
-        id SERIAL PRIMARY KEY,
-        invoice_id INT REFERENCES invoices(id) ON DELETE CASCADE,
-        payment_gateway VARCHAR(50),
-        transaction_id VARCHAR(100),
-        amount NUMERIC(10, 2),
-        status VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // ১২. পার্টনারস (ডিলার ও রিসেলার) টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS partners (
         id SERIAL PRIMARY KEY,
@@ -169,11 +141,16 @@ const initDB = async () => {
         role VARCHAR(20) NOT NULL,
         payout_method VARCHAR(50),
         payout_account VARCHAR(100),
+        total_supplied NUMERIC(10, 2) DEFAULT 0,
+        total_paid NUMERIC(10, 2) DEFAULT 0,
+        current_due NUMERIC(10, 2) DEFAULT 0,
+        total_earned_profit NUMERIC(10, 2) DEFAULT 0,
+        paid_profit NUMERIC(10, 2) DEFAULT 0,
+        pending_payout NUMERIC(10, 2) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // ১৩. পার্টনার ট্রানজ্যাকশন লেজার
     await client.query(`
       CREATE TABLE IF NOT EXISTS partner_transactions (
         id SERIAL PRIMARY KEY,
@@ -187,11 +164,9 @@ const initDB = async () => {
       );
     `);
 
-    // ১৪. কুরিয়ার ডেলিভারি ট্র্যাকিং
     await client.query(`
       CREATE TABLE IF NOT EXISTS courier_deliveries (
         id SERIAL PRIMARY KEY,
-        invoice_id INT,
         courier_name VARCHAR(50) NOT NULL,
         tracking_code VARCHAR(100) NOT NULL,
         recipient_name VARCHAR(100) NOT NULL,
@@ -204,7 +179,6 @@ const initDB = async () => {
       );
     `);
 
-    // ১৫. ফেসবুক মেসেঞ্জার চ্যাটবট অর্ডার টেবিল
     await client.query(`
       CREATE TABLE IF NOT EXISTS fb_orders (
         id SERIAL PRIMARY KEY,
