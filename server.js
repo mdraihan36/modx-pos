@@ -4,10 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const { pool, initDB } = require('./db');
-
-// সঠিক CommonJS সিনট্যাক্সে জেমিনি লোড করা
-const pkg = require('@google/genai');
-const ai = new pkg.GoogleGenAI({});
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 
@@ -15,6 +12,9 @@ app.use(cors());
 app.use(express.json());
 
 initDB();
+
+// জেমিনি ক্লায়েন্ট ইনিশিয়ালাইজ
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
 app.get('/api/bootstrap-data', async (req, res) => {
@@ -420,27 +420,25 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          const systemInstruction = `
-            তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
-            তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
-            আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
-            ${productListContext}
+          // জেমিনি মডেল কনফিগারেশন
+          const model = genAI.getGenerativeModel({ 
+            model: 'gemini-1.5-flash',
+            systemInstruction: `
+              তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
+              তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
+              আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
+              ${productListContext}
 
-            নিয়মাবলী:
-            - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
-            - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
-          `;
-
-          const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: userMsg,
-            config: {
-              systemInstruction: systemInstruction,
-              temperature: 0.7,
-            }
+              নিয়মাবলী:
+              - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
+              - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
+            `
           });
 
-          const botReply = response.text || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
+          const result = await model.generateContent(userMsg);
+          const response = await result.response;
+          const botReply = response.text() || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
+          
           await sendTextMessage(senderId, botReply);
 
         } catch (botErr) {
