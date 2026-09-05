@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const { pool, initDB } = require('./db');
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 
@@ -11,6 +12,9 @@ app.use(cors());
 app.use(express.json());
 
 initDB();
+
+// জেমিনি ক্লায়েন্ট ইনিশিয়ালাইজ (এনভায়রনমেন্ট থেকে API Key নিবে)
+const ai = new GoogleGenAI({});
 
 // ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
 app.get('/api/bootstrap-data', async (req, res) => {
@@ -366,10 +370,9 @@ app.patch('/api/workshop/jobcard/:id', async (req, res) => {
   }
 });
 
-// Facebook Webhook
+// Facebook Webhook & Gemini AI Chatbot
 const PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'modx_secret_bot_token';
-const userSessions = {};
 
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -396,6 +399,8 @@ const sendTextMessage = async (senderId, text) => {
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'page') {
+    res.status(200).send('EVENT_RECEIVED');
+
     for (const entry of body.entry) {
       const webhookEvent = entry.messaging?.[0];
       if (!webhookEvent) continue;
@@ -403,52 +408,54 @@ app.post('/webhook', async (req, res) => {
 
       if (webhookEvent.message && webhookEvent.message.text) {
         const userMsg = webhookEvent.message.text.trim();
-        if (!userSessions[senderId]) userSessions[senderId] = { step: 0, orderData: {} };
-        const session = userSessions[senderId];
 
-        switch (session.step) {
-          case 0:
-            await sendTextMessage(senderId, "স্বাগতম ModX Bike Mart-এ!\nকোন পার্টস বা এক্সেসরিজটি অর্ডার করতে চান?");
-            session.step = 1;
-            break;
-          case 1:
-            session.orderData.items = userMsg;
-            await sendTextMessage(senderId, "আপনার পূর্ণ নাম লিখুন:");
-            session.step = 2;
-            break;
-          case 2:
-            session.orderData.name = userMsg;
-            await sendTextMessage(senderId, "আপনার মোবাইল নম্বরটি দিন:");
-            session.step = 3;
-            break;
-          case 3:
-            session.orderData.phone = userMsg;
-            await sendTextMessage(senderId, "কুরিয়ার ডেলিভারির পূর্ণ ঠিকানা দিন:");
-            session.step = 4;
-            break;
-          case 4:
-            session.orderData.address = userMsg;
-            try {
-              if (pool) {
-                await pool.query(
-                  `INSERT INTO fb_orders (sender_id, customer_name, customer_phone, delivery_address, items_ordered)
-                   VALUES ($1, $2, $3, $4, $5)`,
-                  [senderId, session.orderData.name, session.orderData.phone, session.orderData.address, session.orderData.items]
-                );
-              }
-              await sendTextMessage(senderId, `অর্ডার সফলভাবে গ্রহণ করা হয়েছে!\nআইটেম: ${session.orderData.items}\nফোন: ${session.orderData.phone}`);
-            } catch (err) {
-              await sendTextMessage(senderId, "অর্ডার সংরক্ষণে সমস্যা হয়েছে, পুনরায় চেষ্টা করুন।");
+        try {
+          // ১. ডাটাবেজ থেকে বর্তমান প্রোডাক্ট ও স্টক ফেচ করা
+          let productListContext = "আমাদের দোকানে বর্তমানে কোনো পণ্য তালিকাভুক্ত নেই।";
+          if (pool) {
+            const prodRes = await pool.query('SELECT name, selling_price, stock, category FROM products');
+            if (prodRes.rows.length > 0) {
+              productListContext = prodRes.rows.map(p => 
+                `- ${p.name} (${p.category}): দাম Tk ${p.selling_price}, স্টক আছে ${p.stock} পিস`
+              ).join('\n');
             }
-            delete userSessions[senderId];
-            break;
-          default:
-            delete userSessions[senderId];
-            break;
+          }
+
+          // ২. জেমিনির জন্য সিস্টেম নির্দেশিকা ও কটেক্সট তৈরি
+          const systemInstruction = `
+            তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
+            তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
+            আমাদের দোকানের বর্তমান পণ্যের তালিকা এবং স্টক নিচে দেওয়া হলো:
+            ${productListContext}
+
+            নিয়মাবলী:
+            - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
+            - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার কাছে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা জানতে চাইবে।
+            - কাস্টমার যদি নাম, ফোন ও ঠিকানা দিয়ে দেয়, তবে তাকে ধন্যবাদ জানাবে এবং জানাবে যে টিম শীঘ্রই যোগাযোগ করবে।
+          `;
+
+          // ৩. জেমিনি এপিআই কল করা (Gemini 2.5 Flash মডেল ব্যবহার করে)
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: userMsg,
+            config: {
+              systemInstruction: systemInstruction,
+              temperature: 0.7,
+            }
+          });
+
+          const botReply = response.text || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
+
+          // ৪. কাস্টমার যদি অর্ডার সংক্রান্ত তথ্য দিয়ে দেয়, চাইলে সেটি ব্যাকএন্ডে ধরতে পারেন বা জেমিনির উত্তরের ওপর ভিত্তি করে কাজ করতে পারেন।
+          // ৫. ফেসবুকে উত্তর পাঠানো
+          await sendTextMessage(senderId, botReply);
+
+        } catch (botErr) {
+          console.error('Gemini Bot Error:', botErr.message);
+          await sendTextMessage(senderId, "দুঃখিত, একটু টেকনিক্যাল সমস্যা হচ্ছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।");
         }
       }
     }
-    res.status(200).send('EVENT_RECEIVED');
   } else {
     res.sendStatus(404);
   }
