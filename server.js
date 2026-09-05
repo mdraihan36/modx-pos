@@ -4,7 +4,10 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const { pool, initDB } = require('./db');
-const { GoogleGenAI } = require('@google/genai');
+
+// সঠিক CommonJS সিনট্যাক্সে জেমিনি লোড করা
+const pkg = require('@google/genai');
+const ai = new pkg.GoogleGenAI({});
 
 const app = express();
 
@@ -12,9 +15,6 @@ app.use(cors());
 app.use(express.json());
 
 initDB();
-
-// জেমিনি ক্লায়েন্ট ইনিশিয়ালাইজ (এনভায়রনমেন্ট থেকে API Key নিবে)
-const ai = new GoogleGenAI({});
 
 // ১. পেজ রিলোডে ডাটাবেজ থেকে সমস্ত ডাটা একবারে নিয়ে আসা
 app.get('/api/bootstrap-data', async (req, res) => {
@@ -410,7 +410,6 @@ app.post('/webhook', async (req, res) => {
         const userMsg = webhookEvent.message.text.trim();
 
         try {
-          // ১. ডাটাবেজ থেকে বর্তমান প্রোডাক্ট ও স্টক ফেচ করা
           let productListContext = "আমাদের দোকানে বর্তমানে কোনো পণ্য তালিকাভুক্ত নেই।";
           if (pool) {
             const prodRes = await pool.query('SELECT name, selling_price, stock, category FROM products');
@@ -421,7 +420,6 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          // ২. জেমিনির জন্য সিস্টেম নির্দেশিকা ও কটেক্সট তৈরি
           const systemInstruction = `
             তুমি ModX Bike Mart-এর একজন ফ্রেন্ডলি ও প্রফেশনাল এআই সেলস অ্যাসিস্ট্যান্ট। 
             তোমার কাজ হলো কাস্টমারের মেসেজের উত্তর দেওয়া, পার্টসের দাম বা স্টক সম্পর্কে জানানো এবং বাইক পার্টস বিক্রি করা।
@@ -430,11 +428,9 @@ app.post('/webhook', async (req, res) => {
 
             নিয়মাবলী:
             - কাস্টমার যে পণ্যের দাম বা স্টক জানতে চাইবে, উপরোক্ত তালিকা দেখে সঠিক দাম ও স্টক জানাবে।
-            - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার কাছে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা জানতে চাইবে।
-            - কাস্টমার যদি নাম, ফোন ও ঠিকানা দিয়ে দেয়, তবে তাকে ধন্যবাদ জানাবে এবং জানাবে যে টিম শীঘ্রই যোগাযোগ করবে।
+            - কাস্টমার পার্টস কিনতে চাইলে বা অর্ডার কনফার্ম করতে চাইলে তার নাম, মোবাইল নম্বর এবং ডেলিভারির ঠিকানা চাইবে।
           `;
 
-          // ৩. জেমিনি এপিআই কল করা (Gemini 2.5 Flash মডেল ব্যবহার করে)
           const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: userMsg,
@@ -445,8 +441,6 @@ app.post('/webhook', async (req, res) => {
           });
 
           const botReply = response.text || "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।";
-
-          // ৪. ফেসবুকে উত্তর পাঠানো
           await sendTextMessage(senderId, botReply);
 
         } catch (botErr) {
